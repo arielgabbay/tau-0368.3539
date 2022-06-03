@@ -2,6 +2,7 @@
 Oracles for chosen-ciphertext attacks on PKCS #1
 """
 from Crypto.Cipher import PKCS1_v1_5
+import ssl_client
 
 import subprocess
 
@@ -35,12 +36,14 @@ class PKCS1_v1_5_Oracle(Oracle):
 class PKCS1_v1_5_Oracle_MbedTLS(Oracle):
     def __init__(self, key):
         super(Oracle, self).__init__()
+        ssl_client.set_opts(["force_version=tls12", "auth_mode=none", "ca_file=none", "ca_path=none", "key_pwd=none", "curves=none", "force_ciphersuite=TLS-RSA-PSK-WITH-AES-128-CBC-SHA256", "psk=abcdef"])
 
     def query(self, input):
-        client = subprocess.Popen(["./mbedtls/programs/ssl/ssl_client2", "force_version=tls12", "auth_mode=optional",
-           "force_ciphersuite=TLS-RSA-PSK-WITH-AES-128-CBC-SHA256", "psk=abcdef", "custom_pms=" + input.hex()], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        ret = client.wait()
-        return ret == 0
+        #client = subprocess.Popen(["./mbedtls/programs/ssl/ssl_client2", "force_version=tls12", "auth_mode=none", "ca_file=none", "ca_path=none", "key_pwd=none", "curves=none",
+#            "force_ciphersuite=TLS-RSA-PSK-WITH-AES-128-CBC-SHA256", "psk=abcdef", "custom_pms=" + input.hex()]) #, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+ #       ret = client.wait()
+        ret = ssl_client.query(input)
+        return ret != 2
 
 
 class PKCS1_OAEP_Oracle(Oracle):

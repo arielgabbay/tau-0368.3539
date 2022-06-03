@@ -223,28 +223,29 @@ def bleichenbacher_attack(k, key, c, oracle, verbose=False):
 import time
 if __name__ == "__main__":
     n_length = 1024
-    keyfile = tempfile.NamedTemporaryFile(suffix=".key.pem", delete=False)
-    reqfile = tempfile.NamedTemporaryFile(suffix=".csr", delete=False)
-    crtfile = tempfile.NamedTemporaryFile(suffix=".crt", delete=False)
-    keyfilename = keyfile.name
-    reqfilename = reqfile.name
-    crtfilename = crtfile.name
-    keyfile.close()
-    keyfilename = "example-rsa.key.pem"
-    keygen = subprocess.Popen(["openssl", "genpkey", "-algorithm", "RSA", "-pkeyopt",
-        "rsa_keygen_bits:%u" % n_length, "-out", keyfilename])
-    assert keygen.wait() == 0, "Error generating key."
-    reqgen = subprocess.Popen(["openssl", "req", "-new", "-key", keyfilename, "-out", reqfilename,
-        "-subj", "/C=AU/ST=Some-State/L=Some-City/O=Sadna/OU=Party/CN=Common-Name"])
-    assert reqgen.wait() == 0, "Error generating csr file."
-    crtgen = subprocess.Popen(["openssl", "x509", "-req", "-days", "365", "-in", reqfilename,
-        "-signkey", keyfilename, "-out", crtfilename])
-    assert crtgen.wait() == 0, "Error generating crt file."
-    os.unlink(reqfilename)
+    keyfilename = "priv.key.pem"
+    #keyfile = tempfile.NamedTemporaryFile(suffix=".key.pem", delete=False)
+    #reqfile = tempfile.NamedTemporaryFile(suffix=".csr", delete=False)
+    #crtfile = tempfile.NamedTemporaryFile(suffix=".crt", delete=False)
+    #keyfilename = keyfile.name
+    #reqfilename = reqfile.name
+    #crtfilename = crtfile.name
+    #keyfile.close()
+    #keyfilename = "example-rsa.key.pem"
+    #keygen = subprocess.Popen(["openssl", "genpkey", "-algorithm", "RSA", "-pkeyopt",
+    #    "rsa_keygen_bits:%u" % n_length, "-out", keyfilename])
+    #assert keygen.wait() == 0, "Error generating key."
+    #reqgen = subprocess.Popen(["openssl", "req", "-new", "-key", keyfilename, "-out", reqfilename,
+    #    "-subj", "/C=AU/ST=Some-State/L=Some-City/O=Sadna/OU=Party/CN=Common-Name"])
+    #assert reqgen.wait() == 0, "Error generating csr file."
+    #crtgen = subprocess.Popen(["openssl", "x509", "-req", "-days", "365", "-in", reqfilename,
+    #    "-signkey", keyfilename, "-out", crtfilename])
+    #assert crtgen.wait() == 0, "Error generating crt file."
+    #os.unlink(reqfilename)
     with open(keyfilename, "rb") as keyfile:
         key = RSA.import_key(keyfile.read())
-    serv = subprocess.Popen(["./mbedtls/programs/ssl/ssl_server2", "key_file=" + keyfilename,
-            "crt_file=" + crtfilename, "force_version=tls12", "force_ciphersuite=TLS-RSA-PSK-WITH-AES-128-CBC-SHA256", "psk=abcdef"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    #serv = subprocess.Popen(["./mbedtls/programs/ssl/ssl_server2", "key_file=" + keyfilename,
+    #        "crt_file=" + crtfilename, "force_version=tls12", "force_ciphersuite=TLS-RSA-PSK-WITH-AES-128-CBC-SHA256", "psk=abcdef"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
     # key = RSA.generate(n_length)
     pub_key = key.public_key()
