@@ -1,0 +1,29 @@
+TODO list
+Stage 1:
+(DONE) implement basic Oracles
+(DONE) implement Bleichenbacher attack for basic oracles (i.e a solution to stage1)
+implement Magner attack for basic oracles (i.e a solution to stage1)
+add HARD difficulty file (just an empty file so its easy)
+add NORMAL difficulty file (copy from HW all the "?")
+add EASY difficulty file (not yet determined)
+
+Stage 2:
+(I think its done not sure) add copy of decryption function with exceptions for Bleichenbacher 
+add copy of decryption function with exceptions for Magner
+add copys of decryption function with waits added in the spots for Bleichenbacher:
+for large constant time.
+for large random time.
+for small random time.
+add copys of decryption function with waits added in the spots for Manger:
+for large constant time.
+for large random time.
+for small random time.
+add Oracles_2.py file with the skeletons required for implementation of all 8 oracles (2 basic exception based and 6 timing based)
+(If we find more primitves we will add the needed tasks to do theme here)
+
+(optional) lattice based implementation of magner with limited sequential querries
+
+
+
+
+
