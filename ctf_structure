@@ -1,0 +1,42 @@
+The ctf includes 2 stages more details below.
+
+Stage 1: implementation of Magner attack and Bleichenbacher attack.
+In this stage there will be 3 difficulty levels where the difficulty is determined by how much of the code of the attack script itself we obstruct:
+HARD: a blank sheet where the solution must be implemented from scratch (might be too difficult).
+NORMAL: the same as our HW excersize (maybe a with more direction to make it slightly easier).
+EASY: I have not fully thought this through but we should definetly have an easy difficulty on this part since it might be too much for some people.
+All difficulty levels will include the same basic oracles (Bleichenbacher oracle and Magner Oracle) and all of them will require implementation of both algorithms.
+
+Stage 2: implementation of Oracles from different primitives.
+This stage will focus on the "other side" of the attack in the first stage we supplied the oracles and requested the implementation in this stage -
+we will assume a valid implementation given an oracle and supply different primitves asking the students to implement the oracles from the primitives.
+
+Exception based primitives:
+very easy meant to be a warm up for this stage we will include two versions of the decryption function where one includes an exception if it is an invalid decryption -
+and the second will give different exceptions wether it failed on the check of the first two bytes or the later checks - 
+(we will call them magner exception and just a regular exception).
+
+Timing based primitives:
+I have planned 3 different oracles that can be constructed each will require 2 slightly modified versions of the decryption function in the mbed-TLS library -
+each of these 3 ideas will be used for both magner and Bleichenbacher making a total of 6 Oracles that need implementation (with each oracle having its own version -
+of the decryption function).
+we will supply the oracle skeleton and the students must implement the query function using the supplied primitives (we will give them a function that measures the -
+time required for the entire decryption this function will be implemented on the python side)
+
+First idea: modify the functions in a way that adds a relatively large (probably around double the standard time, will require more testing) constant time wait:
+in magner this constant wait time will come after the check of the first two bytes (that they are 00 and 02 respectively).
+in Bleichenbacher this constant wait time will come right before the return of a valid decryption.
+
+Second idea: instead of a large constant wait time we will supply a random wait time (which ranges from 0 to relatively large).
+the placement will be identical to the last placement this type of primitive will require the stundents to check an average size of a small sample size to be certain -
+(since false positives are the biggest problem in both oracles)
+
+third idea: instead of having the range of the random variable being from 0 to relatively large we will make it from 0 to relatively small (not sure exactly how small).
+once again same placements this type the key difference is this will require a larger sample size but hopefully we can make it so insread of guessing an -
+approximation of the needed sample size the students will need to do a little math to figure out the desired sample size and some math to figure out the theresholds.
+
+more primitives to come hopefully I havent thought of any yet
+
+Optional third stage (not sure how easy it will be to implement I will try this once we have a finished product):
+make use of magners parrelilaztion potential and include an attack that limits the ammount of sequential querries and use the method with the lattices described -
+in class 5 slides 211 onwards (I havent read this deeply and cannot approximate the difficulty of implementing it and so it is not set it stone)
