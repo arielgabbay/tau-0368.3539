@@ -63,7 +63,7 @@ class PKCS1_v1_5_Oracle_MbedTLS(Oracle):
         ret = ssl_client.query(input)
         return ret != -1
 
-    def read_bytes(self, count, timeout=1):
+    def read_bytes(self, count, timeout=0.1):
         res = select.select([self.sock], [], [], timeout)
         if not res[0]:
             return b""
@@ -80,16 +80,16 @@ class PKCS1_v1_5_Oracle_MbedTLS(Oracle):
     def read_resp(self):
         typ = self.read_bytes(1)
         if len(typ) == 0:
-            return 0
-        if typ != b"\x15":
             return -1
+        if typ != b"\x15":
+            return -2
         ver = self.read_bytes(2)
         length = self.read_bytes(2)
         if length != b"\x00\x02":
-            return -2
+            return -3
         lvl = self.read_bytes(1)
         if lvl != b"\x02":
-            return -3
+            return -4
         desc = self.read_bytes(1)
         return int.from_bytes(desc, byteorder="big")
 
@@ -100,8 +100,6 @@ class PKCS1_v1_5_Oracle_MbedTLS(Oracle):
         resp = self.read_resp()
         if resp != 91:
             print("RESP %d" % resp)
-            self.sock.close()
-            self.sock = None
         return resp != 91
 
 

@@ -258,5 +258,5 @@ if __name__ == "__main__":
     result = bleichenbacher_attack(k, pub_key, c, oracle, True)
     print(result)
 
-    os.unlink(keyfilename)
-    os.unlink(crtfilename)
+    #os.unlink(keyfilename)
+    #os.unlink(crtfilename)
