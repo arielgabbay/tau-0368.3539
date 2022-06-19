@@ -54,8 +54,7 @@ class PKCS1_v1_5_Oracle_MbedTLS(Oracle):
         self.sock.connect(("127.0.0.1", 4433))
         self.sock.send(bytes.fromhex("16030300610100005d030362ac2c12d90b74d84a688188a36a11df1455920891da9ab4cfc2cfb8f0ba0a7d00000400b600ff010000300000000e000c0000096c6f63616c686f7374000d000e000c060306010503050104030401001600000017000000230000"))
         self.sock.setblocking(0)
-        time.sleep(1)
-        self.sock.recv(100000)
+        self.read_server_hello()
 
     def old_query(self, input):
         #client = subprocess.Popen(["./mbedtls/programs/ssl/ssl_client2", "force_version=tls12", "auth_mode=none", "ca_file=none", "ca_path=none", "key_pwd=none", "curves=none",
@@ -69,6 +68,14 @@ class PKCS1_v1_5_Oracle_MbedTLS(Oracle):
         if not res[0]:
             return b""
         return self.sock.recv(count)
+
+    def read_server_hello(self):
+        while True:
+            hdr = self.read_bytes(6)
+            typ, ver, length, msgtype = struct.unpack(">BHHB", hdr)
+            self.read_bytes(length - 1)  # read rest of frame
+            if msgtype == 0xE:  # server hello done
+                break
 
     def read_resp(self):
         typ = self.read_bytes(1)
