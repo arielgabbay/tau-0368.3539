@@ -43,15 +43,17 @@ def build_keyexch(pms, identity=b"Client_identity"):
     return struct.pack(fmt, 22, 0x303, paramslen + 4, 16, 0, paramslen, len(identity), identity, len(pms), pms)
 
 class PKCS1_v1_5_Oracle_MbedTLS(Oracle):
-    def __init__(self, key):
+    def __init__(self, key, addr="127.0.0.1", port=4433):
         super(Oracle, self).__init__()
         self.sock = None
+        self.addr = addr
+        self.port = port
 
         # ssl_client.set_opts(["force_version=tls12", "auth_mode=none", "ca_file=none", "ca_path=none", "key_pwd=none", "curves=none", "force_ciphersuite=TLS-RSA-PSK-WITH-AES-128-CBC-SHA256", "psk=abcdef"])
 
     def sock_init(self):
         self.sock = socket.socket()
-        self.sock.connect(("127.0.0.1", 4433))
+        self.sock.connect((self.addr, self.port))
         self.sock.send(bytes.fromhex("16030300610100005d030362ac2c12d90b74d84a688188a36a11df1455920891da9ab4cfc2cfb8f0ba0a7d00000400b600ff010000300000000e000c0000096c6f63616c686f7374000d000e000c060306010503050104030401001600000017000000230000"))
         self.sock.setblocking(0)
         self.read_server_hello()
@@ -63,7 +65,7 @@ class PKCS1_v1_5_Oracle_MbedTLS(Oracle):
         ret = ssl_client.query(input)
         return ret != -1
 
-    def read_bytes(self, count, timeout=0.1):
+    def read_bytes(self, count, timeout=1):
         res = select.select([self.sock], [], [], timeout)
         if not res[0]:
             return b""
@@ -101,6 +103,16 @@ class PKCS1_v1_5_Oracle_MbedTLS(Oracle):
         if resp != 91:
             print("RESP %d" % resp)
         return resp != 91
+
+    def query_async(self, input):
+        if self.sock is None:
+            self.sock_init()
+        self.sock.send(build_keyexch(input))
+        yield
+        resp = self.read_resp()
+        if resp != 91:
+            print("RESP %d" % resp)
+        yield resp != 91
 
 
 class PKCS1_OAEP_Oracle(Oracle):
