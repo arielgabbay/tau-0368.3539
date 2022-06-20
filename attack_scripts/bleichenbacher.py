@@ -12,6 +12,7 @@ import argparse
 import time
 import sys
 
+BRUTE_FORCE_THERSHOLD = 2**8
 
 def egcd(a, b):
     """
@@ -224,11 +225,14 @@ def bleichenbacher_attack(k, key, c, oracles, verbose=False, skip_blinding=False
 
         m = narrow_m(key, m, s, B)
 
-        if len(m) == 1 and m[0][0] == m[0][1]:
-            result = (m[0][0] * modinv(s_0, key.n)) % key.n
+        if len(m) == 1 and m[0][0] + BRUTE_FORCE_THERSHOLD >= m[0][1]:
+            for j in range(m[0][0], m[0][1] + 1):
+                result = (j * modinv(s_0, key.n)) % key.n
+                if pow(result, key.e, key.n) == c:
+                    break
             break
         i += 1
-
+    
     # Test the result
     if pow(result, key.e, key.n) == c:
         return result.to_bytes(k, byteorder='big')
