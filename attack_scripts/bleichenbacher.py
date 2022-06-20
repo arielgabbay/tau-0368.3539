@@ -200,7 +200,7 @@ def bleichenbacher_attack(k, key, c, oracles, verbose=False, skip_blinding=False
     B = 2 ** (8 * (k - 2))
 
     if not skip_blinding:
-        s_0, c_0 = blinding(k, key, c, oracles[0])
+        s_0, c_0 = blinding(k, key, int.from_bytes(c, byteorder="big"), oracles[0])
     else:
         s_0, c_0 = 1, int.from_bytes(c, byteorder="big")
 
