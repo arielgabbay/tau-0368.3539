@@ -6,3 +6,4 @@ request.csr
 cert.crt
 *.so
 temp/
+*.bin
