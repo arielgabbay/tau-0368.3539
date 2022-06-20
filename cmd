@@ -1,0 +1,1 @@
+python3.8 attack_scripts/bleichenbacher.py -n 4 -p 4433 -s 127.0.0.1 -c enc.bin -k pubkey.bin -l 1024 --skip-blinding

