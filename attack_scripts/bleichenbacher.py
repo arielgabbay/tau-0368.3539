@@ -188,7 +188,7 @@ def narrow_m(key, m_prev, s, B):
     return merge_intervals(intervals)
 
 
-def bleichenbacher_attack(k, key, c, oracles, verbose=False, skip_blinding=False):
+def bleichenbacher_attack(k, key, c, oracles, verbose=False):
     """
     Given an RSA public key and an oracle for conformity of PKCS #1 encryptions, along with a value c, calculate m = (c ** d) mod n
     :param k: length of ciphertext in bytes
@@ -199,10 +199,8 @@ def bleichenbacher_attack(k, key, c, oracles, verbose=False, skip_blinding=False
     """
     B = 2 ** (8 * (k - 2))
 
-    if not skip_blinding:
-        s_0, c_0 = blinding(k, key, int.from_bytes(c, byteorder="big"), oracles[0])
-    else:
-        s_0, c_0 = 1, int.from_bytes(c, byteorder="big")
+    c = int.from_bytes(c, byteorder="big")
+    s_0, c_0 = blinding(k, key, c, oracles[0])
 
     if verbose:
         print("Blinding complete")
@@ -243,7 +241,6 @@ def parse_args():
     parser.add_argument("--given-enc", "-c")
     parser.add_argument("--public-key", "-k", required=True)
     parser.add_argument("--n-length", "-l", type=int, default=1024)
-    parser.add_argument("--skip-blinding", action="store_true")
     return parser.parse_args()
 
 def read_pubkey(f, n_bytes):
@@ -266,6 +263,6 @@ if __name__ == "__main__":
     else:
         c = b'\x00' + (k - 1) * bytes([1])
 
-    result = bleichenbacher_attack(k, pub_key, c, oracles, True, args.skip_blinding)
+    result = bleichenbacher_attack(k, pub_key, c, oracles, True)
     print(result)
 
