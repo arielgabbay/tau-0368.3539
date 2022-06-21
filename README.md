@@ -19,7 +19,7 @@ openssl x509 -req -days 365 -in request.csr -signkey priv.key.pem -out cert.crt
 Then build the `mbedtls`   server; in the `mbedtls`  directory, run
 
 ```
-make -C programs ssl/ssl_server3
+make programs
 ```
 
 We can then run the server:
@@ -60,7 +60,7 @@ Here we list the functions in the flow of client handshake frame handling and de
 * `mbedtls_ssl_handshake` and `mbedtls_ssl_handshake_step` in `library/ssl_tls.c`.
 * `mbedtls_ssl_handshake_server_step` and `ssl_parse_client_key_exchange` in `library/ssl_tls12_server.c`.
 * `ssl_parse_encrypted_pms` in `library/ssl_tls12_server.c`
-  * Here we added the sending of alert messages according to unpadding results. We also set the return value of the function to `MBEDTLS_ERR_SSL_DECODE_ERROR`, which is handled in `main` as described above. The error value in the alert message is determined by the error value returned; we added an error value, `MBEDTLS_ERR_RSA_PADDING_ORACLE`, to unpadding functions; this return value indicates the oracle should return that the padding in invalid.
+  * Here we added the sending of alert messages according to unpadding results. We also set the return value of the function to `MBEDTLS_ERR_SSL_DECODE_ERROR`, which is handled in `main` as described above. The error value in the alert message is determined by the error value returned; we added an error value, `MBEDTLS_ERR_RSA_PADDING_ORACLE`, to unpadding functions; this return value indicates the oracle should return that the padding is invalid.
 * `ssl_decrypt_encrypted_pms` in `library/ssl_tls12_server.c`.
 * `mbedtls_pk_decrypt` in `library/pk.c`
   * Here we set the padding scheme on the RSA context struct if needed.

