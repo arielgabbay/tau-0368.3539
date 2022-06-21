@@ -19,7 +19,7 @@ openssl x509 -req -days 365 -in request.csr -signkey priv.key.pem -out cert.crt
 Then build the `mbedtls`   server; in the `mbedtls`  directory, run
 
 ```
-make programs/ssl/ssl_server3
+make -C programs ssl/ssl_server3
 ```
 
 We can then run the server:
