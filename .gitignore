@@ -7,3 +7,4 @@ cert.crt
 *.so
 temp/
 *.bin
+ctf_scripts/ctf/
