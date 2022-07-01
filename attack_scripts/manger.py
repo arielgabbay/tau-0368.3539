@@ -4,7 +4,7 @@ https://www.iacr.org/archive/crypto2001/21390229.pdf
 """
 from oracles import Oracle_MbedTLS
 from Crypto.Cipher import PKCS1_OAEP
-from attack_args import parse_args, read_pubkey
+from attack_args import parse_args, read_pubkey, unpad
 
 
 def divceil(a, b):
@@ -143,3 +143,6 @@ if __name__ == "__main__":
 
     result = manger_attack(k, pub_key, c, oracle, True)
     print(result)
+    if result is not None:
+        print("Unpadded:")
+        print(unpad(result))

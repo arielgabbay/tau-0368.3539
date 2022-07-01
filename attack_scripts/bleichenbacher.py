@@ -4,7 +4,7 @@ http://archiv.infsec.ethz.ch/education/fs08/secsem/bleichenbacher98.pdf
 """
 from oracles import Oracle_MbedTLS
 from os import urandom
-from attack_args import parse_args, read_pubkey
+from attack_args import parse_args, read_pubkey, unpad
 import subprocess
 import tempfile
 import os
@@ -263,4 +263,7 @@ if __name__ == "__main__":
 
     result = bleichenbacher_attack(k, pub_key, c, oracles)
     print(result)
+    if result is not None:
+        print("Unpadded:")
+        print(unpad(result))
 

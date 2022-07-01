@@ -32,13 +32,21 @@ To use PKCS 1 v1.5 (for a Bleichenbacher oracle), this line is sufficient. To us
 
 The default port on which the server listens is 4433. To change this (for example when running several servers simultaneously), add the argument `server_port=<port_number_here>`.
 
-The attack scripts expect a public key file, and can also take a valid encryption of a message using the server's key (to skip the blinding phase of the Bleichenbacher attack). To generate such files, run the script `gen_params.py`  in the directory where the key file you generated beforehand. This will create two new files, `enc.bin`, a valid encryption, and `pubkey.bin`, the public key (`N`  and `e`). The attack scripts know how to extract the needed information from these files. To run the Bleichenbacher attack, for example, run
+The attack scripts expect a public key file, and can also take a valid encryption of a message using the server's key (to skip the blinding phase of the Bleichenbacher attack). To generate such files, run the script `gen_params.py`, for example:
+
+```
+python3.8 gen_params.py --priv priv.key.pem --pub pubkey.bin --enc enc.bin "Success!"
+```
+
+
+
+This will create two new files, `enc.bin`, a valid PKCS 1.5 encryption of the string "Success!" and `pubkey.bin`, the public key (`N`  and `e`). The attack scripts know how to extract the needed information from these files. To run the Bleichenbacher attack, for example, run
 
 ```
 python3.8 attack_scripts/bleichenbacher.py -n <num_of_servers> -p <first_port_number> -s <server_ip> -c enc.bin -k pubkey.bin -l 1024
 ```
 
-The attack scripts expects there to be `<num_of_servers>`  servers on consecutive ports starting from `<first_port_number>` listening with the appropriate oracle. Run the script with `--help` for more details.
+The attack scripts expects there to be `<num_of_servers>`  servers on consecutive ports starting from `<first_port_number>` listening with the appropriate oracle. Run the script with `--help` for more details. The script outputs the padded message given in `enc.bin` and (if found) its "unpadded" message, which should be the argument given to `gen_params.py` if all worked well.
 
 Notice that valid encryptions can also be generated at will by the attacker given the server's public key.
 

@@ -15,3 +15,9 @@ def parse_args():
 def read_pubkey(f, n_bytes):
     return RSA.RsaKey(n=int.from_bytes(f.read(n_bytes), byteorder="big"),
             e=int.from_bytes(f.read(n_bytes), byteorder="big"))
+
+def unpad(s):
+    try:
+        return s[s.index(0, 2) + 1:]
+    except ValueError:
+        return None
