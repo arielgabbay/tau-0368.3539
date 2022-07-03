@@ -114,7 +114,7 @@ def main():
                 stagedir = os.path.join(args.ctf_dir, "stage_%02d" % (i + 1))
                 key_file = os.path.join(stagedir, "server", "priv.key.pem")
                 crt_file = os.path.join(stagedir, "server", "cert.crt")
-                f.write("./ssl_server3 key_file=%s crt_file=%s force_version=tls12 force_ciphersuite=TLS-RSA-PSK-WITH-AES-128-CBC-SHA256 psk=abcdef stage=%d server_port=%d" % (key_file, crt_file, i, serv_port))
+                f.write("./ssl_server3 key_file=%s crt_file=%s force_version=tls12 force_ciphersuite=TLS-RSA-PSK-WITH-AES-128-CBC-SHA256 psk=abcdef stage=%d server_port=%d\n" % (key_file, crt_file, i, serv_port))
 
 if __name__ == "__main__":
     sys.exit(main())
