@@ -1,35 +1,48 @@
 from Crypto.PublicKey import RSA
-import Crypto.Cipher.PKCS1_v1_5 as PKCS
+import Crypto.Cipher.PKCS1_v1_5 as PKCS_1_5
+import Crypto.Cipher.PKCS1_OAEP as PKCS_OAEP
+import random
 import os
 import sys
 import argparse
 import subprocess
 
+FLAGSIZE = 16
+SERVERS_IP = "10.0.0.9"
+
+class Stage:
+    def __init__(self, servers_per_user, pkcs_class):
+        self.servers_per_user = servers_per_user
+        self.pkcs_class = pkcs_class
+        self.port = -1
+        self.server_ports = []
+
+STAGES = [
+    Stage(1, PKCS_1_5),
+    Stage(3, PKCS_1_5)
+]
+
+SUBJ = "/C=GB/ST=London/L=London/O=Global Security/OU=IT Department/CN=example.com"
+
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--num-groups", "-n", required=True, type=int)
+    parser.add_argument("--num-servers", "-n", required=True, type=int)
+    parser.add_argument("--nginx-conf", "-c", required=True)
+    parser.add_argument("--nginx-command", "-d", required=True)
+    parser.add_argument("--servers-command", "-s", required=True)
     parser.add_argument("ctf_dir")
     return parser.parse_args()
 
-FLAGSIZE = 16
-
-def generate_group(priv, pub, enc, flagfile, flag=None):
+def generate_group(priv, pub, enc, flag, pkcs_class):
     key = RSA.import_key(open(priv, "rb").read())
-    pkcs = PKCS.new(key)
+    pkcs = pkcs_class.new(key)
 
     with open(pub, "wb") as f:
         f.write(key.n.to_bytes(key.size_in_bytes(), byteorder="big"))
         f.write(key.e.to_bytes(key.size_in_bytes(), byteorder="big"))
 
-    if flag is None:
-        flag = os.urandom(FLAGSIZE)
     with open(enc, "wb") as f:
         f.write(pkcs.encrypt(flag))
-    with open(flagfile, "wb") as f:
-        f.write(flag)
-
-NUM_STAGES = 3
-SUBJ = "/C=GB/ST=London/L=London/O=Global Security/OU=IT Department/CN=example.com"
 
 def call(cmd):
     sp = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -38,28 +51,70 @@ def call(cmd):
 
 def main():
     args = parse_args()
-    os.mkdir(args.ctf_dir)
-    for group_num in range(1, args.num_groups + 1):
-        groupdir = os.path.join(args.ctf_dir, "group_%02d" % group_num)
-        os.mkdir(groupdir)
-        for stage_num in range(1, NUM_STAGES + 1):
-            stagedir = os.path.join(groupdir, "stage_%02d" % stage_num)
-            os.mkdir(stagedir)
-            servdir = os.path.join(stagedir, "server")
-            os.mkdir(servdir)
-            priv = os.path.join(servdir, "priv.key.pem")
-            req = os.path.join(servdir, "request.csr")
-            cert = os.path.join(servdir, "cert.crt")
-            call(["openssl", "genpkey", "-algorithm", "RSA", "-pkeyopt", "rsa_keygen_bits:1024",
-                  "-out", priv])
-            call(["openssl", "req", "-new", "-key", priv, "-out", req, "-subj", SUBJ])
-            call(["openssl", "x509", "-req", "-days", "365", "-in", req, "-signkey", priv, "-out",
-                  cert])
-            grpdir = os.path.join(stagedir, "group")
-            os.mkdir(grpdir)
-            generate_group(priv, os.path.join(grpdir, "pubkey.bin"), os.path.join(grpdir, "enc.bin"),
-                           os.path.join(stagedir, "flag.bin"))
 
+    # Generate challenge files for the various stages.
+    os.mkdir(args.ctf_dir)
+    for i, stage in enumerate(STAGES):
+        stage_num = i + 1
+        stagedir = os.path.join(args.ctf_dir, "stage_%02d" % stage_num)
+        os.mkdir(stagedir)
+        flag = os.urandom(FLAGSIZE)
+        with open(os.path.join(stagedir, "flag"), "w") as f:
+            f.write(flag.hex())
+        servdir = os.path.join(stagedir, "server")
+        os.mkdir(servdir)
+        priv = os.path.join(servdir, "priv.key.pem")
+        req = os.path.join(servdir, "request.csr")
+        cert = os.path.join(servdir, "cert.crt")
+        call(["openssl", "genpkey", "-algorithm", "RSA", "-pkeyopt", "rsa_keygen_bits:1024",
+              "-out", priv])
+        call(["openssl", "req", "-new", "-key", priv, "-out", req, "-subj", SUBJ])
+        call(["openssl", "x509", "-req", "-days", "365", "-in", req, "-signkey", priv, "-out",
+              cert])
+        grpdir = os.path.join(stagedir, "group")
+        os.mkdir(grpdir)
+        generate_group(priv, os.path.join(grpdir, "pubkey.bin"), os.path.join(grpdir, "enc.bin"),
+                       flag, stage.pkcs_class)
+
+    # Generate port numbers for stages
+    curr_ports = set()
+    for stage in STAGES:
+        port = random.randrange(3000, 10000)
+        while port in curr_ports:
+            port = random.randrange(3000, 10000)
+        curr_ports.add(port)
+        stage.port = port
+
+    # Generate server-running stuff
+    with open(args.nginx_command, "w") as f:
+        ports_str = " -p ".join("%d:%d" % (p, p) for p in curr_ports)
+        f.write("docker run --name ctf_servers_nginx1 -p %s -d ctf_servers_nginx" % ports_str)
+
+    with open(args.nginx_conf, "w") as f:
+        f.write("events {}\nstream {\n")
+        for i, stage in enumerate(STAGES):
+            for _ in range(stage.servers_per_user * args.num_servers):
+                port = random.randrange(3000, 10000)
+                while port in curr_ports:
+                    port = random.randrange(3000, 10000)
+                curr_ports.add(port)
+                stage.server_ports.append(port)
+            f.write("\tupstream stage%02d {\n\t\tleast_conn;\n" % (i + 1))
+            for serv_port in stage.server_ports:
+                f.write("\t\tserver %s:%d;\n" % (SERVERS_IP, serv_port))
+            f.write("\t}\n")
+        for i, stage in enumerate(STAGES):
+            f.write("\tserver {\n\t\tlisten %d;\n\t\tproxy_pass stage%02d;\n\t}\n" % (stage.port, i + 1))
+        f.write("}")
+
+    with open(args.servers_command, "w") as f:
+        for i, stage in enumerate(STAGES):
+            f.write("# STAGE %02d\n" % (i + 1))
+            for serv_port in stage.server_ports:
+                stagedir = os.path.join(args.ctf_dir, "stage_%02d" % (i + 1))
+                key_file = os.path.join(stagedir, "server", "priv.key.pem")
+                crt_file = os.path.join(stagedir, "server", "cert.crt")
+                f.write("./ssl_server3 key_file=%s crt_file=%s force_version=tls12 force_ciphersuite=TLS-RSA-PSK-WITH-AES-128-CBC-SHA256 psk=abcdef stage=%d server_port=%d" % (key_file, crt_file, i, serv_port))
 
 if __name__ == "__main__":
     sys.exit(main())
