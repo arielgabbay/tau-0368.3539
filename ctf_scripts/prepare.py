@@ -8,7 +8,6 @@ import argparse
 import subprocess
 
 FLAGSIZE = 16
-SERVERS_IP = "10.0.0.9"
 
 class Stage:
     def __init__(self, servers_per_user, pkcs_class):
@@ -30,6 +29,7 @@ def parse_args():
     parser.add_argument("--nginx-conf", "-c", required=True)
     parser.add_argument("--nginx-command", "-d", required=True)
     parser.add_argument("--servers-command", "-s", required=True)
+    parser.add_argument("--servers-ip", "-i", required=True)
     parser.add_argument("ctf_dir")
     return parser.parse_args()
 
@@ -101,7 +101,7 @@ def main():
                 stage.server_ports.append(port)
             f.write("\tupstream stage%02d {\n\t\tleast_conn;\n" % (i + 1))
             for serv_port in stage.server_ports:
-                f.write("\t\tserver %s:%d;\n" % (SERVERS_IP, serv_port))
+                f.write("\t\tserver %s:%d;\n" % (args.servers_ip, serv_port))
             f.write("\t}\n")
         for i, stage in enumerate(STAGES):
             f.write("\tserver {\n\t\tlisten %d;\n\t\tproxy_pass stage%02d;\n\t}\n" % (stage.port, i + 1))
@@ -114,7 +114,7 @@ def main():
                 stagedir = os.path.join(args.ctf_dir, "stage_%02d" % (i + 1))
                 key_file = os.path.join(stagedir, "server", "priv.key.pem")
                 crt_file = os.path.join(stagedir, "server", "cert.crt")
-                f.write("./ssl_server3 key_file=%s crt_file=%s force_version=tls12 force_ciphersuite=TLS-RSA-PSK-WITH-AES-128-CBC-SHA256 psk=abcdef stage=%d server_port=%d\n" % (key_file, crt_file, i, serv_port))
+                f.write("./ssl_server3 key_file=%s crt_file=%s force_version=tls12 force_ciphersuite=TLS-RSA-PSK-WITH-AES-128-CBC-SHA256 psk=abcdef stage=%d server_port=%d &\n" % (key_file, crt_file, i, serv_port))
 
 if __name__ == "__main__":
     sys.exit(main())

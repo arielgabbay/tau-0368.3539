@@ -4,7 +4,8 @@ http://archiv.infsec.ethz.ch/education/fs08/secsem/bleichenbacher98.pdf
 """
 from oracles import Oracle_MbedTLS
 from os import urandom
-from attack_args import parse_args, read_pubkey, unpad
+from attack_args import parse_args, read_pubkey
+from PKCS_1_5 import parse
 import subprocess
 import tempfile
 import os
@@ -265,5 +266,5 @@ if __name__ == "__main__":
     print(result)
     if result is not None:
         print("Unpadded:")
-        print(unpad(result))
+        print(parse(result).hex())
 
