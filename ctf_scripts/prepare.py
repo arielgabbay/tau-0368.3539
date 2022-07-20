@@ -10,22 +10,23 @@ import subprocess
 FLAGSIZE = 16
 
 class Stage:
-    def __init__(self, servers_per_user, pkcs_class):
-        self.servers_per_user = servers_per_user
+    def __init__(self, servers_per_group, threads_per_server, pkcs_class):
+        self.servers_per_group = servers_per_group
+        self.threads_per_server = threads_per_server
         self.pkcs_class = pkcs_class
         self.port = -1
         self.server_ports = []
 
 STAGES = [
-    Stage(1, PKCS_1_5),
-    Stage(3, PKCS_1_5)
+    Stage(1, 5, PKCS_1_5),
+    Stage(3, 5, PKCS_1_5)
 ]
 
 SUBJ = "/C=GB/ST=London/L=London/O=Global Security/OU=IT Department/CN=example.com"
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--num-servers", "-n", required=True, type=int)
+    parser.add_argument("--num-groups", "-n", required=True, type=int)
     parser.add_argument("--nginx-conf", "-c", required=True)
     parser.add_argument("--nginx-command", "-d", required=True)
     parser.add_argument("--servers-command", "-s", required=True)
@@ -93,7 +94,7 @@ def main():
     with open(args.nginx_conf, "w") as f:
         f.write("events {}\nstream {\n")
         for i, stage in enumerate(STAGES):
-            for _ in range(stage.servers_per_user * args.num_servers):
+            for _ in range(args.num_servers * stage.servers_per_group):
                 port = random.randrange(3000, 10000)
                 while port in curr_ports:
                     port = random.randrange(3000, 10000)
@@ -114,7 +115,7 @@ def main():
                 stagedir = os.path.join(args.ctf_dir, "stage_%02d" % (i + 1))
                 key_file = os.path.join(stagedir, "server", "priv.key.pem")
                 crt_file = os.path.join(stagedir, "server", "cert.crt")
-                f.write("./ssl_server3 key_file=%s crt_file=%s force_version=tls12 force_ciphersuite=TLS-RSA-PSK-WITH-AES-128-CBC-SHA256 psk=abcdef stage=%d server_port=%d &\n" % (key_file, crt_file, i, serv_port))
+                f.write("./ssl_server3 key_file=%s crt_file=%s force_version=tls12 force_ciphersuite=TLS-RSA-PSK-WITH-AES-128-CBC-SHA256 psk=abcdef stage=%d server_port=%d num_servers=%d &\n" % (key_file, crt_file, i, serv_port, stage.threads_per_server))
 
 if __name__ == "__main__":
     sys.exit(main())

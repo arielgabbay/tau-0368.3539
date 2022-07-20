@@ -252,9 +252,7 @@ if __name__ == "__main__":
     with open(args.public_key, "rb") as keyfile:
         pub_key = read_pubkey(keyfile, k)
 
-    oracles = []
-    for port in range(args.start_port, args.start_port + args.num_servers):
-        oracles.append(Oracle_MbedTLS(port=port))
+    oracles = [Oracle_MbedTLS(port=args.server_port) for _ in range(args.num_servers)]
 
     if args.given_enc is not None:
         with open(args.given_enc, "rb") as f:

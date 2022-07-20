@@ -23,7 +23,8 @@ This will run CTFd on port 80 of your machine. You can then configure CTF throug
 To prepare the files needed for the CTF, run
 
 ```
-python3.8 ctf_scripts/prepare.py <directory_name> -n <num_servers> --nginx-conf nginx/conf/nginx.conf --nginx-command nginx/command --servers-command nginx/servers
+mkdir nginx/conf
+python3.8 ctf_scripts/prepare.py <directory_name> -n <num_groups> --nginx-conf nginx/conf/nginx.conf --nginx-command nginx/command --servers-command nginx/servers --servers-ip <ip_address>
 ```
 
 Where the directory name is the name of a (nonexisting) directory where you want the files to be generated and the number of groups is the number of groups participating in the CTF. This script will generate the following directories and files:
@@ -70,6 +71,8 @@ cd nginx/
 
 This will run the `nginx` container and **all** the server instances from the `nginx` directory in this project; this is to be run on the host machine. Notice that currently all servers (the CTF platform, `nginx` and the servers themselves) are run on the same machine. To run the servers on a different machine, pass the `--servers-ip` option (with an IP address) to the `prepare.py` script and run the last line above (`. ./servers`) on that machine. Support for several hosts for the servers can be added to the `prepare.py` script.
 
+Furthermore, as each server instance can hold several connections simultaneously (if required), the `prepare.py` script specifies how many server instances to run per group and how many listening processes to require of each server; to change this, modify the script.
+
 ### Adding stages
 
 To add a stage to the CTF, the following things are required:
@@ -96,6 +99,8 @@ Notice that valid encryptions can also be generated at will by the attacker give
 The changes we made to make the server vulnerable cause the server to send a TLS alert frame after **every** client handshake frame with a special alert number indicating whether the padding was valid or not (according to the oracle given). This deviates slightly from (vulnerable) TLS behavior, as in the regular case, an alert frame may be sent after invalid messages but not after valid ones. This is to save time during the attack, so that instead of sending a ChangeCipherSpec message or waiting a certain amount of time for a response, the attacker immediately gets a response.
 
 Moreover, after **every** client handshake frame, the server waits for **another** client handshake message, saving time on socket reopening. If the client closes the connection, then the server waits for a new connection (and subsequently a ClientHello message before entering the handshake loop again). This means that every instance of the server serves one client at a time, but does so continuously.
+
+We also added to the server program the option `num_servers` which, if specified, tells the server how many separate processes to create so that requests can be made in parallel to the same server. The current maximum is 25 processes.
 
 ### MbedTLS code details
 
