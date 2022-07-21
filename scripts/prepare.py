@@ -29,7 +29,8 @@ def parse_args():
     parser.add_argument("--num-groups", "-n", required=True, type=int)
     parser.add_argument("--nginx-conf", "-c", required=True)
     parser.add_argument("--nginx-command", "-d", required=True)
-    parser.add_argument("--servers-command", "-s", required=True)
+    parser.add_argument("--servers-build-command", "-s", required=True)
+    parser.add_argument("--servers-run-command", "-r", required=True)
     parser.add_argument("--servers-ip", "-i", required=True)
     parser.add_argument("ctf_dir")
     return parser.parse_args()
@@ -94,7 +95,7 @@ def main():
     with open(args.nginx_conf, "w") as f:
         f.write("events {}\nstream {\n")
         for i, stage in enumerate(STAGES):
-            for _ in range(args.num_servers * stage.servers_per_group):
+            for _ in range(args.num_groups * stage.servers_per_group):
                 port = random.randrange(3000, 10000)
                 while port in curr_ports:
                     port = random.randrange(3000, 10000)
@@ -108,14 +109,18 @@ def main():
             f.write("\tserver {\n\t\tlisten %d;\n\t\tproxy_pass stage%02d;\n\t}\n" % (stage.port, i + 1))
         f.write("}")
 
-    with open(args.servers_command, "w") as f:
+    with open(args.servers_build_command, "w") as f:
         for i, stage in enumerate(STAGES):
             f.write("# STAGE %02d\n" % (i + 1))
-            for serv_port in stage.server_ports:
-                stagedir = os.path.join(args.ctf_dir, "stage_%02d" % (i + 1))
-                key_file = os.path.join(stagedir, "server", "priv.key.pem")
-                crt_file = os.path.join(stagedir, "server", "cert.crt")
-                f.write("./ssl_server3 key_file=%s crt_file=%s force_version=tls12 force_ciphersuite=TLS-RSA-PSK-WITH-AES-128-CBC-SHA256 psk=abcdef stage=%d server_port=%d num_servers=%d &\n" % (key_file, crt_file, i, serv_port, stage.threads_per_server))
+            stagedir = os.path.join(args.ctf_dir, "stage_%02d" % (i + 1))
+            key_file = os.path.join(stagedir, "server", "priv.key.pem")
+            crt_file = os.path.join(stagedir, "server", "cert.crt")
+            f.write("docker build -f servers/Dockerfile -t stage%02d . --build-arg MBEDTLS=mbedtls --build-arg PRIVKEY=%s --build-arg CERT=%s --build-arg STAGE=%d --build-arg NUM_SERVERS=%d\n" % (i + 1, key_file, crt_file, i + 1, stage.threads_per_server))
+
+    with open(args.servers_run_command, "w") as f:
+        for i, stage in enumerate(STAGES):
+            for j, serv_port in enumerate(stage.server_ports):
+                f.write("docker run --name stage%02d_%02d -p %d:4433 -d stage%02d\n" % (i + 1, j + 1, serv_port, i + 1))
 
 if __name__ == "__main__":
     sys.exit(main())
