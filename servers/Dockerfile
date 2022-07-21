@@ -5,7 +5,7 @@ ARG CERT=
 ARG STAGE=
 ARG NUM_SERVERS=
 RUN apt-get -y update 
-RUN apt-get install -y make
+RUN apt-get install -y build-essential
 RUN apt-get install -y python3
 COPY ${MBEDTLS} /etc/mbedtls
 WORKDIR /etc/mbedtls
