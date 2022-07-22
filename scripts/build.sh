@@ -6,6 +6,7 @@ if [ -d ctf/ ]; then
 fi
 if [ ! $# = 2 ]; then
 	echo "Usage: $0 <num_of_groups> <servers_ip>" 1>&2
+	echo "Notice that to run nginx on the same machine as the servers, server IP needs to be 172.17.0.1" 1>&2
 	exit 2
 fi
 # Create CTF import file
