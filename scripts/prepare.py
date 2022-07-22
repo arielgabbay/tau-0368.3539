@@ -18,8 +18,14 @@ class Stage:
         self.server_ports = []
 
 STAGES = [
-    Stage(1, 5, PKCS_1_5),
-    Stage(3, 5, PKCS_1_5)
+    Stage(1, 5, PKCS_1_5),  # Bleichenbacher simple oracle
+    Stage(3, 5, PKCS_1_5),  # Bleichenbacher simple oracle, parallel queries
+    Stage(1, 5, PKCS_1_5),  # Bleichenbacher timing oracle (1)
+    Stage(3, 5, PKCS_1_5),  # Bleichenbacher timing oracle (1), parallel queries
+    Stage(1, 5, PKCS_1_5),  # Bleichenbacher timing oracle (2)
+    Stage(3, 5, PKCS_1_5),  # Bleichenbacher timing oracle (2), parallel queries
+    Stage(1, 5, PKCS_OAEP), # Manger simple oracle
+    Stage(3, 5, PKCS_OAEP)  # Manger simple oracle, parallel queries
 ]
 
 SUBJ = "/C=GB/ST=London/L=London/O=Global Security/OU=IT Department/CN=example.com"

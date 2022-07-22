@@ -4,6 +4,7 @@ from Crypto.PublicKey import RSA
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--num-servers", "-n", type=int, default=1)
+    parser.add_argument("--stage", "-g", type=int, default=1)
     parser.add_argument("--server-port", "-p", type=int, default=4433)
     parser.add_argument("--server-addr", "-s", default="127.0.0.1")
     parser.add_argument("--given-enc", "-c")

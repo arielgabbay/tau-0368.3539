@@ -8,6 +8,11 @@ if [ ! $# = 2 ]; then
 	echo "Usage: $0 <num_of_groups> <servers_ip>" 1>&2
 	exit 2
 fi
+# Create CTF import file
+rm -f CTFd/ctf_import.zip
+cd CTFd
+zip -r ctf_import.zip db/
+cd ..
 # Run prepare.py
 mkdir -p nginx/conf
 python3.8 scripts/prepare.py ctf -n $1 --nginx-conf nginx/conf/nginx.conf --nginx-command scripts/run_nginx.sh --servers-build-command scripts/build_servers.sh --servers-run-command scripts/run_servers.sh --servers-ip $2
