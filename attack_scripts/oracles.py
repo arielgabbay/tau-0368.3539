@@ -43,6 +43,8 @@ def build_keyexch(pms, identity=b"Client_identity"):
     return struct.pack(fmt, 22, 0x303, paramslen + 4, 16, 0, paramslen, len(identity), identity, len(pms), pms)
 
 class PKCS1_v1_5_Oracle_MbedTLS(Oracle):
+    
+
     def __init__(self, key, addr="127.0.0.1", port=4433):
         super(Oracle, self).__init__()
         self.sock = None
@@ -103,6 +105,40 @@ class PKCS1_v1_5_Oracle_MbedTLS(Oracle):
         if resp != 91:
             print("RESP %d" % resp)
         return resp != 91
+    
+    def query_timing_stage1(self, input):
+        if self.sock is None:
+            self.sock_init()
+        padding_valid = True
+        iterations = 3
+        for i in range(iterations):
+            start = time.time()
+            self.sock.send(build_keyexch(input))
+            resp = self.read_resp()
+            end = time.time()
+            if end - start < 0.05:
+                padding_valid = False
+        if not padding_valid == (resp != 91):
+            print("wrong\n", (resp != 91))
+        return padding_valid
+
+    def query_timing_stage2(self, input):
+        if self.sock is None:
+            self.sock_init()
+        iterations = 3
+        time_avg = 0
+        for i in range(iterations):
+            start = time.time()
+            self.sock.send(build_keyexch(input))
+            resp = self.read_resp()
+            end = time.time()
+            time_avg += end - start
+        time_avg = time_avg / iterations
+        padding_valid = time_avg > 0.025
+        if not padding_valid == (resp != 91):
+            print("wrong\n", (resp != 91))
+
+        return padding_valid
 
     def query_async(self, input):
         if self.sock is None:
@@ -113,6 +149,40 @@ class PKCS1_v1_5_Oracle_MbedTLS(Oracle):
         if resp != 91:
             print("RESP %d" % resp)
         yield resp != 91
+
+    def query_timing_stage1_async(self, input, iterations):
+        if self.sock is None:
+            self.sock_init()
+        padding_valid = True
+        for i in range(iterations):
+            start = time.time()
+            self.sock.send(build_keyexch(input))
+            yield
+            resp = self.read_resp()
+            end = time.time()
+            if end - start < 0.05:
+                padding_valid = False
+        if not padding_valid == (resp != 91):
+            print("wrong\n", (resp != 91))
+        yield padding_valid
+
+    def query_timing_stage2_async(self, input, iterations):
+        if self.sock is None:
+            self.sock_init()
+        time_avg = 0
+        for i in range(iterations):
+            start = time.time()
+            self.sock.send(build_keyexch(input))
+            yield
+            resp = self.read_resp()
+            end = time.time()
+            time_avg += end - start
+        time_avg = time_avg / iterations
+        padding_valid = time_avg > 0.025
+        if not padding_valid == (resp != 91):
+            print("wrong\n", (resp != 91))
+
+        yield padding_valid
 
 
 class PKCS1_OAEP_Oracle(Oracle):

