@@ -8,6 +8,8 @@ import struct
 import select
 import time
 import timeit
+import multiprocessing
+import itertools
 
 
 def _build_keyexch(pms, identity=b"Client_identity"):
@@ -96,12 +98,30 @@ class _MbedTLS_Oracle_Single:
     def query(self, content, *args, **kwargs):
         return self.stage_queries[self.stage](content, *args, **kwargs)
 
+def _worker_main(arg):
+    addr, port, stage, query_queue, result_queue = arg
+    oracle = _MbedTLS_Oracle_Single(addr, port, stage)
+    while True:
+        query_id, content, args, kwargs = query_queue.get(True)
+        result_queue.put((query_id, oracle.query(content, *args, **kwargs)), block=True)
+
+
 class MbedTLS_Oracle:
     def __init__(self, addr="127.0.0.1", port=4433, stage=1, num_servers=1):
-        self.oracles = [_MbedTLS_Oracle_Single(addr, port, stage) for _ in range(num_servers)]
+        self.num_servers = num_servers
+        self.pool = multiprocessing.Pool(processes=num_servers)
+        self.manager = multiprocessing.Manager()
+        self.query_queue = self.manager.Queue()
+        self.result_queue = self.manager.Queue()
+        worker_arg = (addr, port, stage, self.query_queue, self.result_queue)
+        self.pool.map_async(_worker_main, itertools.repeat(worker_arg, num_servers))
 
-    def query(self, content, *args, **kwargs):
-        return self.oracles[0].query(content, *args, **kwargs)
+    def add_query(self, query_id, content, *args, **kwargs):
+        self.query_queue.put((query_id, content, args, kwargs), False)
+
+    def wait_query(self):
+        query_id, result = self.result_queue.get(True)
+        return query_id, result
 
     def __len__(self):
-        return len(self.oracles)
+        return self.num_servers

