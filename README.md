@@ -122,12 +122,12 @@ Here we list the functions in the flow of client handshake frame handling and de
 
 * `main` in `programs/ssl/ssl_server3.c`
   * This is the main function of the server application. In the handshake loop (found after the label `handshake`), `MBEDTLS_ERR_SSL_DECODE_ERROR` indicates that the server should go back to waiting for a client handshake message. This is done by setting the error value to `MBEDTLS_ERR_SSL_CLIENT_RECONNECT`, exploiting an SSL feature (client reconnection) implemented in the original server code. Other errors (such as EOF's caused by the attacker closing their socket) cause the server to go back to listening for a new connection.
-  * Command-line options are parsed in this function. The option `stage` was added and sets a global variable in `library/pk.c`, where we set the padding scheme on the RSA context struct if needed. This is not very elegant, but it's done as setting the scheme is simpler from the functions in `library/pk.c`.
+  * Command-line options are parsed in this function. The option `stage` was added and sets a global variable in `library/pk.c`, where we set the padding scheme on the RSA context struct if needed. This is not very elegant, but it's done as setting the scheme is simpler from the functions in `library/pk.c`. According to the value of this option, the server's behavior (stage-wise) is determined. In `library/common.h` there is an `enum` with the various stages.
   * We added `fork` calls before `mbedtls_accept` in order to create several instances of a server if needed.
 * `mbedtls_ssl_handshake` and `mbedtls_ssl_handshake_step` in `library/ssl_tls.c`.
 * `mbedtls_ssl_handshake_server_step` and `ssl_parse_client_key_exchange` in `library/ssl_tls12_server.c`.
 * `ssl_parse_encrypted_pms` in `library/ssl_tls12_server.c`
-  * Here we added the sending of alert messages according to unpadding results. We also set the return value of the function to `MBEDTLS_ERR_SSL_DECODE_ERROR`, which is handled in `main` as described above. The error value in the alert message is determined by the error value returned; we added an error value, `MBEDTLS_ERR_RSA_PADDING_ORACLE`, to unpadding functions; this return value indicates the oracle should return that the padding is invalid.
+  * Here we added the sending of alert messages according to unpadding results (for relevant stages). We also set the return value of the function to `MBEDTLS_ERR_SSL_DECODE_ERROR`, which is handled in `main` as described above. The error value in the alert message is determined by the error value returned; we added an error value, `MBEDTLS_ERR_RSA_PADDING_ORACLE`, to unpadding functions; this return value indicates the oracle should return that the padding is invalid.
 * `ssl_decrypt_encrypted_pms` in `library/ssl_tls12_server.c`.
 * `mbedtls_pk_decrypt` in `library/pk.c`
   * Here we set the padding scheme on the RSA context struct if needed.
@@ -140,7 +140,7 @@ For PKCS 1 v1.5 (Bleichenbacher),
 * `mbedtls_rsa_rsaes_pkcs1_v15_decrypt` in `library.rsa.c`
   * Decrypts with `mbedtls_rsa_private` and removes padding with
 * `mbedtls_ct_rsaes_pkcs1_v15_unpadding` in `library/constant_time.c`
-  * We return `MBEDTLS_ERR_RSA_PADDING_ORACLE`, an error we added (as opposed to `MBEDTLS_ERR_RSA_INVALID_PADDING `which is the standard error) in case a padding error occurs. This is done (mainly) by invoking the `NOT_CONSTANT_TIME` macro in the function; this macro returns the new error value in the middle of the function in case of an error.
+  * We return `MBEDTLS_ERR_RSA_PADDING_ORACLE`, an error we added (as opposed to `MBEDTLS_ERR_RSA_INVALID_PADDING `which is the standard error) in case a padding error occurs. This is done (mainly) by invoking the `NOT_CONSTANT_TIME` macro in the function; this macro returns the new error value in the middle of the function in case of an error, or `usleep`s, or does other things according to the stage number.
 
 For PKCS 1 OAEP (Manger),
 

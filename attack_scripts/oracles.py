@@ -89,7 +89,7 @@ class _MbedTLS_Oracle_Single:
                 return False
         return True
 
-    def query_by_average(self, content, iterations=3, threshold=0.025):
+    def query_by_average(self, content, iterations=5, threshold=0.025):
         total = timeit.timeit(lambda : self.query_by_error(content), number=iterations)
         time_avg = total / iterations
         return time_avg > threshold

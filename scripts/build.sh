@@ -21,6 +21,8 @@ python3.8 scripts/prepare.py ctf -n $1 --nginx-conf nginx/conf/nginx.conf --ngin
 cd nginx
 docker build -t ctf_servers_nginx .
 cd ..
+# Build base server image
+docker build -f servers/Dockerfile_base -t ctf_server_base . --build-arg MBEDTLS=mbedtls
 # Build server images
 chmod +x scripts/build_servers.sh
 ./scripts/build_servers.sh

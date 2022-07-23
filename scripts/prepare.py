@@ -18,14 +18,14 @@ class Stage:
         self.server_ports = []
 
 STAGES = [
-    Stage(1, 5, PKCS_1_5),  # Bleichenbacher simple oracle
-    Stage(3, 5, PKCS_1_5),  # Bleichenbacher simple oracle, parallel queries
-    Stage(1, 5, PKCS_1_5),  # Bleichenbacher timing oracle (1)
-    Stage(3, 5, PKCS_1_5),  # Bleichenbacher timing oracle (1), parallel queries
-    Stage(1, 5, PKCS_1_5),  # Bleichenbacher timing oracle (2)
-    Stage(3, 5, PKCS_1_5),  # Bleichenbacher timing oracle (2), parallel queries
-    Stage(1, 5, PKCS_OAEP), # Manger simple oracle
-    Stage(3, 5, PKCS_OAEP)  # Manger simple oracle, parallel queries
+    Stage(2, 5,  PKCS_1_5),  # Bleichenbacher simple oracle
+    Stage(1, 15, PKCS_1_5),  # Bleichenbacher simple oracle, parallel queries
+    Stage(2, 5,  PKCS_1_5),  # Bleichenbacher timing oracle (1)
+    Stage(1, 15, PKCS_1_5),  # Bleichenbacher timing oracle (1), parallel queries
+    Stage(2, 5,  PKCS_1_5),  # Bleichenbacher timing oracle (2)
+    Stage(1, 15, PKCS_1_5),  # Bleichenbacher timing oracle (2), parallel queries
+    Stage(2, 5,  PKCS_OAEP), # Manger simple oracle
+    Stage(1, 15, PKCS_OAEP)  # Manger simple oracle, parallel queries
 ]
 
 SUBJ = "/C=GB/ST=London/L=London/O=Global Security/OU=IT Department/CN=example.com"
@@ -120,7 +120,7 @@ def main():
                         port = random.randrange(3000, 10000)
                     curr_ports.add(port)
                     ports.append(port)
-                    stage.server_ports.append(ports)
+                stage.server_ports.append(ports)
                 f.write("\tupstream stage%02d_group%02d {\n\t\tleast_conn;\n" % (i + 1, group_num + 1))
                 for serv_port in ports:
                     f.write("\t\tserver %s:%d;\n" % (args.servers_ip, serv_port))
@@ -134,7 +134,7 @@ def main():
             stagedir = os.path.join(args.ctf_dir, "stage_%02d" % (i + 1))
             key_file = os.path.join(stagedir, "server", "priv.key.pem")
             crt_file = os.path.join(stagedir, "server", "cert.crt")
-            f.write("docker build -f servers/Dockerfile -t stage%02d . --build-arg MBEDTLS=mbedtls --build-arg PRIVKEY=%s --build-arg CERT=%s --build-arg STAGE=%d --build-arg NUM_SERVERS=%d\n" % (i + 1, key_file, crt_file, i + 1, stage.threads_per_server))
+            f.write("docker build -f servers/Dockerfile_stage -t stage%02d . --build-arg PRIVKEY=%s --build-arg CERT=%s --build-arg STAGE=%d --build-arg NUM_SERVERS=%d\n" % (i + 1, key_file, crt_file, i + 1, stage.threads_per_server))
 
     with open(args.servers_run_command, "w") as f:
         for i, stage in enumerate(STAGES):
