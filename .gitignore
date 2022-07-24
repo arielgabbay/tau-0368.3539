@@ -13,3 +13,4 @@ scripts/run_servers.sh
 nginx/conf/
 ctf/
 CTFd/*.zip
+flag_pool/*/

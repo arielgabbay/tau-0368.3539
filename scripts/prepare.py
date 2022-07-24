@@ -1,3 +1,4 @@
+#!/usr/bin/python3.8
 from Crypto.PublicKey import RSA
 import Crypto.Cipher.PKCS1_v1_5 as PKCS_1_5
 import Crypto.Cipher.PKCS1_OAEP as PKCS_OAEP
@@ -6,8 +7,6 @@ import os
 import sys
 import argparse
 import subprocess
-
-FLAGSIZE = 16
 
 class Stage:
     def __init__(self, servers_per_group, threads_per_server, pkcs_class):
@@ -27,8 +26,6 @@ STAGES = [
     Stage(2, 5,  PKCS_OAEP), # Manger simple oracle
     Stage(1, 15, PKCS_OAEP)  # Manger simple oracle, parallel queries
 ]
-
-SUBJ = "/C=GB/ST=London/L=London/O=Global Security/OU=IT Department/CN=example.com"
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -51,11 +48,6 @@ def generate_group(priv, pub, enc, flag, pkcs_class):
 
     with open(enc, "wb") as f:
         f.write(pkcs.encrypt(flag))
-
-def call(cmd):
-    sp = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    res = sp.wait()
-    assert res == 0, "Command\n%s\nreturned %d; stderr is:\n%s" % (" ".join(cmd), res, sp.stderr.read())
 
 def main():
     args = parse_args()
