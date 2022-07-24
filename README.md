@@ -53,6 +53,7 @@ ctf/
 	group_masks - mask values for ports for the group servers
 	stage_XX/ - the directory for stage XX of the CTF
 		flag - a file containing the flag for this stage
+		queries - the number of queries needed to decrypt enc.bin
 		port - the port to be published (each groups XORs with its mask)
 		group/ - a directory with the files given to the group
 			enc.bin - PKCS encryption of the flag
@@ -60,7 +61,6 @@ ctf/
 		server/ - files for running the stage's target server
 			cert.crt - certificate file
 			priv.key.pem - private key
-			request.csr - byproduct
 scripts/
 	build_servers.sh
 	run_servers.sh

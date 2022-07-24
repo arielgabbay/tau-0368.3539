@@ -77,7 +77,7 @@ def main():
         assert flag_num is not None, "No flag found matching criteria for stage %d" % (i + 1)
         flagdir = os.path.join(args.flag_pool_dir, "%03d" % flag_num)
         shutil.copyfile(os.path.join(flagdir, "flag"), os.path.join(stagedir, "flag"))
-        with open(os.path.join(stagedir, "rounds"), "w") as f:
+        with open(os.path.join(stagedir, "queries"), "w") as f:
             f.write(str(flags[flag_num][stage.idx]))
         servdir = os.path.join(stagedir, "server")
         os.mkdir(servdir)
