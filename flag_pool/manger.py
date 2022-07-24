@@ -40,6 +40,7 @@ def find_f1(k, key, c, oracle):
     :param oracle: oracle that checks whether a decryption is smaller than B
     :return: f1 such that B/2 <= f1 * m / 2 < B
     """
+    global total_queries
     f1 = 2
     while oracle.query(((pow(f1, key.e, key.n) * c) % key.n).to_bytes(k, byteorder='big')):
         total_queries += 1
@@ -60,6 +61,7 @@ def find_f2(k, key, c, f1, oracle):
     :param oracle: oracle that checks whether a decryption is smaller than B
     :return: f2 such that n <= f2 * m < n + B
     """
+    global total_queries
     B = 2 ** (8 * (k - 1))
     f2 = divfloor(key.n + B, B) * (f1 // 2)
     while not oracle.query(((pow(f2, key.e, key.n) * c) % key.n).to_bytes(k, byteorder='big')):
@@ -79,6 +81,7 @@ def find_m(k, key, c, f2, oracle, verbose=False):
     :param oracle: oracle that checks whether a decryption is smaller than B
     :return: m such that (m ** e) mod n = c
     """
+    global total_queries
     B = 2 ** (8 * (k - 1))
     m_min = divceil(key.n, f2)
     m_max = divfloor(key.n + B, f2)
@@ -121,7 +124,7 @@ def manger_attack(k, key, c, oracle, verbose=False):
     if verbose:
         print("f2 =", f2)
 
-    m = find_m(k, key, c, f2, oracle, True)
+    m = find_m(k, key, c, f2, oracle, False)
 
     # Test the result - if implemented properly the attack should always succeed
     if pow(m, key.e, key.n) == c:

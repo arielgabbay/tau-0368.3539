@@ -11,15 +11,15 @@ import shutil
 import subprocess
 
 class Stage:
-    def __init__(self, servers_per_group, threads_per_server, pkcs_class, minrounds, maxrounds):
+    def __init__(self, servers_per_group, threads_per_server, pkcs_class, minqueries, maxqueries):
         self.servers_per_group = servers_per_group
         self.threads_per_server = threads_per_server
         self.pkcs_class = pkcs_class
         self.idx = 0 if pkcs_class == PKCS_1_5 else 1
         self.ports = None
         self.server_ports = []
-        self.minrounds = minrounds
-        self.maxrounds = maxrounds
+        self.minqueries = minqueries
+        self.maxqueries = maxqueries
 
 PKCS_CLASSES = {"PKCS_1_5": PKCS_1_5, "PKCS_OAEP": PKCS_OAEP}
 
@@ -27,9 +27,9 @@ def read_stages_conf(conf_filename):
     with open(conf_filename, "r") as f:
         conf = json.load(f)
     stages = []
-    for spg, tps, pkcs_str, minrnds, maxrnds in conf:
+    for spg, tps, pkcs_str, minqueries, maxqueries in conf:
         pkcs_class = PKCS_CLASSES[pkcs_str]
-        stages.append(Stages(spg, tps, pkcs_class, minrnds, maxrnds))
+        stages.append(Stages(spg, tps, pkcs_class, minqueries, maxqueries))
     return stages
 
 def parse_args():
@@ -49,7 +49,7 @@ def get_flag(flags, used_flags, stage):
     for i, flag in enumerate(flags):
         if i in used_flags:
             continue
-        if stage.minrounds <= flag[stage.idx] <= stage.maxrounds:
+        if stage.minqueries <= flag[stage.idx] <= stage.maxqueries:
             used_flags.add(i)
             return i
     return None
@@ -57,7 +57,7 @@ def get_flag(flags, used_flags, stage):
 def main():
     args = parse_args()
     stages = read_stages_conf(args.stages_conf)
-    with open(args.flag_pool_dir, "r") as f:
+    with open(os.path.join(args.flag_pool_dir, "queries.json"), "r") as f:
         flags = json.load(f)
     used_flags = set()
 

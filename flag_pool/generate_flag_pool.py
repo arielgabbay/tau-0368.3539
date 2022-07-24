@@ -52,18 +52,18 @@ def gen_single_flag(flag_dir):
         enc = pkcs.encrypt(flag)
         with open(os.path.join(flag_dir, "enc%02d.bin" % idx), "wb") as f:
             f.write(enc)
-        result.append[count_func(key, enc, key.size_in_bytes())]
+        result.append(count_func(key, enc, key.size_in_bytes()))
     return result
 
 NUM_PROCESSES = 10
 
-def main():
-    args = parse_args()
+def main(args):
     pool = multiprocessing.Pool(processes=NUM_PROCESSES)
-    res = pool.imap(gen_single_flag, (os.path.join(args.flagpool_directory, "%02d" % i) for i in range(args.num_flags)))
-    rounds = list(res)
-    with open(os.path.join(args.flagpool_directory, "rounds"), "w") as f:
+    results = pool.imap(gen_single_flag, (os.path.join(args.flagpool_directory, "%02d" % i) for i in range(args.num_flags)))
+    rounds = list(results)
+    with open(os.path.join(args.flagpool_directory, "queries.json"), "w") as f:
         json.dump(rounds, f)
 
 if __name__ == "__main__":
-    main()
+    args = parse_args()
+    main(args)
