@@ -128,7 +128,7 @@ To add a stage to the CTF, the following things are required:
   * The IP address of the host running the stage's server containers (for `nginx` configuration).
 * Add the stage to the CTF in the CTFd platform and update the `CTFd/db` directory accordingly, as explained above.
 
-## Running the attack
+## Running the attack (the solution script)
 
 The attack scripts expect a public key file, and can also take a valid encryption of a message using the server's key (to skip the blinding phase of the Bleichenbacher attack); in the CTF, this message is the encrypted flag. To run the Bleichenbacher attack, for example, run
 

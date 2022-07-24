@@ -30,7 +30,7 @@ def read_stages_conf(conf_filename):
     stages = []
     for spg, tps, pkcs_str, minqueries, maxqueries, servers_ip in conf:
         pkcs_class = PKCS_CLASSES[pkcs_str]
-        stages.append(Stages(spg, tps, pkcs_class, minqueries, maxqueries, servers_ip))
+        stages.append(Stage(spg, tps, pkcs_class, minqueries, maxqueries, servers_ip))
     return stages
 
 def parse_args():
