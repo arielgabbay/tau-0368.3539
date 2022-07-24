@@ -16,7 +16,7 @@ zip -r ctf_import.zip db/
 cd ..
 # Run prepare.py
 mkdir -p nginx/conf
-python3.8 scripts/prepare.py ctf -n $1 --nginx-conf nginx/conf/nginx.conf --nginx-command scripts/run_nginx.sh --servers-build-command scripts/build_servers.sh --servers-run-command scripts/run_servers.sh --servers-ip $2
+python3.8 scripts/prepare.py ctf -n $1 --nginx-conf nginx/conf/nginx.conf --nginx-command scripts/run_nginx.sh --servers-build-command scripts/build_servers.sh --servers-run-command scripts/run_servers.sh --servers-ip $2 --stages-conf scripts/stages.json --flag-pool-dir flag_pool
 # Build nginx image
 cd nginx
 docker build -t ctf_servers_nginx .

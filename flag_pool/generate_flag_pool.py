@@ -46,10 +46,12 @@ def gen_single_flag(flag_dir):
         f.write(key.n.to_bytes(key.size_in_bytes(), byteorder="big"))
         f.write(key.e.to_bytes(key.size_in_bytes(), byteorder="big"))
     result = []
-    for pkcs_class, count_func in ((PKCS_1_5, bleichenbacher.count_rounds),
-                                   (PKCS_OAEP, manger.count_rounds)):
+    for idx, pkcs_class, count_func in ((0, PKCS_1_5, bleichenbacher.count_rounds),
+                                        (1, PKCS_OAEP, manger.count_rounds)):
         pkcs = pkcs_class.new(key)
         enc = pkcs.encrypt(flag)
+        with open(os.path.join(flag_dir, "enc%02d.bin" % idx), "wb") as f:
+            f.write(enc)
         result.append[count_func(key, enc, key.size_in_bytes())]
     return result
 
