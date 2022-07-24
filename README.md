@@ -1,4 +1,4 @@
-# Bleichenbacher/Manger attack implementations
+# PKCS padding oracle attacks: a CTF
 
 ## Introduction
 
