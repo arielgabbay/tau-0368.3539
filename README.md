@@ -4,19 +4,49 @@
 
 This project contains a fork of the `mbedtls`  project, to which we added a program, `ssl_server3`, which is an SSL server with vulnerabilities allowing Bleichenbacher/Manger padding oracle attacks.
 
-In this document we go over the various parts of the project. All commands assume the working directory is the base of the project (where this README resides).
+In this document we go over the various parts of the project and the CTF that it builds. All commands assume the working directory is the base of the project (where this README resides).
+
+## CTF overview
+
+The CTF consists of various stages (challenges), some of which are rely on previous stages. The participants are divided into groups, and each group gets a secret "mask" (a 16-bit number) from which it derives port numbers for each challenge, as we describe shortly. Each challenge consists of a few redacted scripts that implement Bleichenbacher or Manger attacks on a remote TLS server, an encrypted file to be decrypted using these attacks, and a port number. Each group derives from the port number a unique port number on which the server to be attacked by that group (for that challenge) is listening. The server for each stage is vulnerable in some way to these attacks, and the challenge is to implement the attacks, or relevant extensions thereof, in order to decrypt the given encryption, which contains the flag.
+
+The stages are as follows:
+
+1. The server for the first stage is a simplified PKCS 1 v1.5 padding oracle: once a connection is opened and TLS "hello" messages are exchanged, the server listens for client handshake messages containing an encrypted pre-master secret, attempts to decrypt and un-pad these messages, and sends a TLS error frame with a value that denotes success or failure in unpadding.
+2. The server for the second stage is the same as the first stage, but it closes connections and stops responding to requests for fifteen minutes if a certain number of queries are exceeded in a single connection. As servers are multi-process, in this challenge the participants should implement multi-threaded attacks, querying several instances of the server simultaneously. In this stage (and in similar subsequent stages), the number of queries until the server "times out" and the number of queries required to decrypt the flag are matched in advance. Notice that all server processes (derived from the same instance) stop once one server has processed too many queries, in order to prevent groups from simply continuing the attack on a different instance. The time penalty is also "harsh" in order to prevent groups from simply waiting and continuing the attack once the server is back online.
+3. The server for the third stage does not provide a "direct" oracle, but does simulate a timing oracle: on successful unpadding, it sleeps for 50 milliseconds. The participants should implement the querying logic that times requests and answers accordingly.
+4. The fourth stage is like the third stage but with the same challenge as in stage 2: the server disconnects once too many requests are made, so attacks should be made multi-threaded.
+5. The server for the fifth stage does not provide a simple timing oracle, but rather sleeps for 0 to 100 milliseconds on successful unpadding of a message. Once again, the CTF participants should modify their querying code accordingly.
+6. The sixth stage is to the fifth as the fourth is to the third.
+7. The server for the seventh stage provides a simplified PKCS 1 OAEP padding oracle as in stage 1. In this stage, the Manger attack should be implemented.
+8. Once again, stage 8 is a parallelized version of stage 7.
 
 ## Preparing the CTF
 
+### Preparing flags and keys (the "flag pool")
+
+As each challenge should have its own flag and RSA keys, the first thing to be done is to generate a pool of flags and corresponding keys (and encrypted flags, etc.)
+
+Generating such a pool allows for flexibility when choosing keys for various challenges, as the keys and flags can be chosen such that a certain number of oracle queries is required in order to execute an attack fully and decrypt the flag file.
+
+To generate a flag pool, run (from the project's root directory)
+
+```
+cd flag_pool
+python3.8 generate_flag_pool.py -n <pool_size> -d .
+```
+
+Running this will create a directory in `flag_pool/` for every key/flag pair generated with a matching number, and a file `flag_pool/queries.json` that stores for each of these pairs the number of oracle queries required to run a Bleichenbacher or a Manger attack on the encrypted flag. As the script runs the attacks locally to determine the number of queries, it may take a while (it runs ten key-generation processes concurrently to make things a bit quicker). There's no particular need to delve into the results of this script as long as it terminates successfully.
+
 ### Preparing files and servers
 
-To prepare the files and scripts needed for the CTF, run
+To prepare the files and scripts needed for the CTF, run (from the root directory of the project),
 
 ```
-./scripts/build.sh <num_of_groups> <servers_ip>
+./scripts/build.sh <num_of_groups>
 ```
 
-Where the number of groups is the number of groups participating in the CTF and the server IP is the IP address of the server on which the servers will run (notice that to run the `nginx` container on the same machine as the servers, the servers' IP should be `172.17.0.1`, the default host address in the `nginx` container). This script will generate the following directories and files:
+This script will generate the following directories and files:
 
 ```
 ctf/
@@ -42,11 +72,11 @@ CTFd/
 	ctf_import.zip
 ```
 
-To modify the number of stages or what's created for each stage, modify the `prepare.py` script (more on this soon).
+The stage files in the `ctf` directory are taken from the flag pool according to the requirements of each stage (padding type and query range). To modify the number of stages or what's created for each stage, modify the `stages.json` file (more on this in the section below on adding and configuring stages).
 
 The way the servers are configured is thus:
 
-At the start of the event, each group gets a "secret" mask; these values are generated by `build.sh` and stored in `ctf/group_masks`. On each level, a port number is released (the same number for all groups); this is the port in the `port` file in each stage directory. Each group takes this number, XORs it with its mask, and gets the port number of the server to attack for that stage of the CTF. The `nginx` container forwards connections from the main machine to the server containers themselves; its configuration (`nginx/conf/nginx.conf`) holds all the ports and addresses, internal and external. In some stages, more than one server instance is run for each group, and more than one thread is generated in each server instance. These numbers are specified in `prepare.py` and can be modified there. This detail is not visible (directly, at least) to the teams, as all servers are "internal" and the `nginx` container forwards connections from the teams to the servers themselves.
+At the start of the event, each group gets a "secret" mask; these values are generated by `build.sh` and stored in `ctf/group_masks`. On each level, a port number is released (the same number for all groups); this is the port in the `port` file in each stage directory. Each group takes this number, XORs it with its mask, and gets the port number of the server to attack for that stage of the CTF. The `nginx` container forwards connections from the main machine to the server containers themselves; its configuration (`nginx/conf/nginx.conf`) holds all the ports and addresses, internal and external. In some stages, more than one server instance is run for each group, and more than one thread is generated in each server instance. These numbers are specified in `stages.json` and can be modified there (more on this soon). This detail is not visible (directly, at least) to the teams, as all servers are "internal" and the `nginx` container forwards connections from the teams to the servers themselves.
 
 The `build_*.sh` files in the `scripts` directory are used by the `build.sh` script. The `run_*.sh` files are used by the `run.sh` script.
 
@@ -60,9 +90,7 @@ So to get everything going, run (after running `build.sh`, of course)
 ./scripts/run.sh
 ```
 
-This will run the `nginx` container and **all** the server instances from the `nginx` directory in this project; this is to be run on the host machine. Support for several hosts for the servers can be added to the `prepare.py` script.
-
-Furthermore, as each server instance can hold several connections simultaneously (if required), the `prepare.py` script specifies how many server instances to run per group and how many listening processes to require of each server; to change this, modify the script.
+This will run the `nginx` container and **all** the server instances from the `nginx` directory in this project; this is to be run on the host machine. To run different server instances on different hosts, run only `./scripts/run_nginx.sh`, and take the commands needed for each stage from `scripts/run_servers.sh`, running them where needed.
 
 To build the server binary manually for testing, run
 
@@ -86,12 +114,18 @@ docker run -p 80:8000 -it ctfd/ctfd
 
 This will run CTFd on port 80 of your machine. You can then configure CTF through the web interface. `build.sh` run above creates the file `CTFd/ctf_import.zip` from the directory `CTFd/db`, which is an export of the latest CTF configurations. To import this image, create a temporary CTF and the go to Admin Panel -> Backup -> Import to import the `ctf_import.zip` file. To update the image, make the changes you want (or create a new CTF from scratch if needed), and in the same menu as above, export it. CTFd will generate a ZIP file with a `db` directory in it; extract this directory to `CTFd/db` in the project.
 
-### Adding stages
+### Adding and configuring stages
 
 To add a stage to the CTF, the following things are required:
 
 * Modify the `mbedtls` however's needed for the stage. The server receives a `stage` argument that states the stage number and thus tells between stages; see the section on modifications to MbedTLS below for more details.
-* Add to the appropriate location in the `STAGES` list in `prepare.py` an instance of the `Stage` object with the parameters for the stage. Currently, stages are defined by two parameters: the number of server instances to run for each available server needed by the stage (for example, if we want every user to be able to attack five servers simultaneously, set this value to 5), and the type of PKCS padding to use for the flag's encryption file (set to `PKCS_1_5` or to `PKCS_OAEP`).
+* Add the stage to the stage list in `stages.json`. Currently, stages are configured by the following parameters (in this order):
+  * The number of server instances to run. Each instance is a container instance. Each instance can also run multiple processes, as specified in the next value:
+  * The number of processes each server instance should spawn.
+  * The type of PKCS padding to use for the flag's encryption file (a string set to `PKCS_1_5` or to `PKCS_OAEP`).
+  * The minimal number of queries needed to decrypt the flag for this stage. An appropriate flag is selected from the flag pool according to this value.
+  * The maximal number of queries needed to decrypt the flag for this stage. An appropriate flag is selected from the flag pool according to this value.
+  * The IP address of the host running the stage's server containers (for `nginx` configuration).
 * Add the stage to the CTF in the CTFd platform and update the `CTFd/db` directory accordingly, as explained above.
 
 ## Running the attack
@@ -99,12 +133,10 @@ To add a stage to the CTF, the following things are required:
 The attack scripts expect a public key file, and can also take a valid encryption of a message using the server's key (to skip the blinding phase of the Bleichenbacher attack); in the CTF, this message is the encrypted flag. To run the Bleichenbacher attack, for example, run
 
 ```
-python3.8 attack_scripts/bleichenbacher.py -n <num_of_servers> -p <first_port_number> -s <server_ip> -c <enc_file> -k <pubkey_file> -l 1024 -g <stage_number>
+python3.8 attack_scripts/bleichenbacher.py -n <num_of_servers> -p <server_port> -s <server_ip> -c <enc_file> -k <pubkey_file> -l 1024 -g <stage_number>
 ```
 
-The attack scripts expects there to be `<num_of_servers>`  servers on consecutive ports starting from `<first_port_number>` listening with the appropriate oracle. The encryption and public key files are the relevant files (`enc.bin` and `pubkey.bin`, respectively) in the group's files generated by `prepare.py` and shown above. Run the script with `--help` for more details. The script outputs the padded message given in `enc.bin` and (if found) its "unpadded" message, which should be the flag.
-
-Notice that valid encryptions can also be generated at will by the attacker given the server's public key.
+The attack scripts expects there to be `<num_of_servers>`  servers listening with the appropriate oracle on the IP and port given (there may be one server instance with several processes, of course). The encryption and public key files are the relevant files (`enc.bin` and `pubkey.bin`, respectively) in the group's files from the flag pool (selected by `build.sh`, as shown above). Run the script with `--help` for more details. The script outputs the padded message given in `enc.bin` and (if found) its "unpadded" message, which should be the flag.
 
 ## Modifications to MbedTLS
 
@@ -124,6 +156,7 @@ Here we list the functions in the flow of client handshake frame handling and de
   * This is the main function of the server application. In the handshake loop (found after the label `handshake`), `MBEDTLS_ERR_SSL_DECODE_ERROR` indicates that the server should go back to waiting for a client handshake message. This is done by setting the error value to `MBEDTLS_ERR_SSL_CLIENT_RECONNECT`, exploiting an SSL feature (client reconnection) implemented in the original server code. Other errors (such as EOF's caused by the attacker closing their socket) cause the server to go back to listening for a new connection.
   * Command-line options are parsed in this function. The option `stage` was added and sets a global variable in `library/pk.c`, where we set the padding scheme on the RSA context struct if needed. This is not very elegant, but it's done as setting the scheme is simpler from the functions in `library/pk.c`. According to the value of this option, the server's behavior (stage-wise) is determined. In `library/common.h` there is an `enum` with the various stages.
   * We added `fork` calls before `mbedtls_accept` in order to create several instances of a server if needed.
+  * In relevant stages, once a certain number of queries is handled by a single instance, all instances (forked from the same server) are stopped for a certain period of time, as explained above in the various stages.
 * `mbedtls_ssl_handshake` and `mbedtls_ssl_handshake_step` in `library/ssl_tls.c`.
 * `mbedtls_ssl_handshake_server_step` and `ssl_parse_client_key_exchange` in `library/ssl_tls12_server.c`.
 * `ssl_parse_encrypted_pms` in `library/ssl_tls12_server.c`
@@ -147,3 +180,4 @@ For PKCS 1 OAEP (Manger),
 * `mbedtls_rsa_rsaes_oaep_decrypt` in `library/rsa.c`
   * Decrypts with `mbedtls_rsa_private`.
   * Checks padding in "constant time"; here as well we install `NOT_CONSTANT_TIME` where needed to return the new error value.
+

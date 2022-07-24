@@ -59,7 +59,7 @@ NUM_PROCESSES = 10
 
 def main(args):
     pool = multiprocessing.Pool(processes=NUM_PROCESSES)
-    results = pool.imap(gen_single_flag, (os.path.join(args.flagpool_directory, "%02d" % i) for i in range(args.num_flags)))
+    results = pool.imap(gen_single_flag, (os.path.join(args.flagpool_directory, "%03d" % i) for i in range(args.num_flags)))
     rounds = list(results)
     with open(os.path.join(args.flagpool_directory, "queries.json"), "w") as f:
         json.dump(rounds, f)

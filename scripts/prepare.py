@@ -11,7 +11,7 @@ import shutil
 import subprocess
 
 class Stage:
-    def __init__(self, servers_per_group, threads_per_server, pkcs_class, minqueries, maxqueries):
+    def __init__(self, servers_per_group, threads_per_server, pkcs_class, minqueries, maxqueries, servers_ip):
         self.servers_per_group = servers_per_group
         self.threads_per_server = threads_per_server
         self.pkcs_class = pkcs_class
@@ -20,6 +20,7 @@ class Stage:
         self.server_ports = []
         self.minqueries = minqueries
         self.maxqueries = maxqueries
+        self.servers_ip = servers_ip
 
 PKCS_CLASSES = {"PKCS_1_5": PKCS_1_5, "PKCS_OAEP": PKCS_OAEP}
 
@@ -27,9 +28,9 @@ def read_stages_conf(conf_filename):
     with open(conf_filename, "r") as f:
         conf = json.load(f)
     stages = []
-    for spg, tps, pkcs_str, minqueries, maxqueries in conf:
+    for spg, tps, pkcs_str, minqueries, maxqueries, servers_ip in conf:
         pkcs_class = PKCS_CLASSES[pkcs_str]
-        stages.append(Stages(spg, tps, pkcs_class, minqueries, maxqueries))
+        stages.append(Stages(spg, tps, pkcs_class, minqueries, maxqueries, servers_ip))
     return stages
 
 def parse_args():
@@ -39,7 +40,6 @@ def parse_args():
     parser.add_argument("--nginx-command", "-d", required=True)
     parser.add_argument("--servers-build-command", "-s", required=True)
     parser.add_argument("--servers-run-command", "-r", required=True)
-    parser.add_argument("--servers-ip", "-i", required=True)
     parser.add_argument("--stages-conf", "-g", required=True)
     parser.add_argument("--flag-pool-dir", "-f", required=True)
     parser.add_argument("ctf_dir")
@@ -75,7 +75,7 @@ def main():
         os.mkdir(stagedir)
         flag_num = get_flag(flags, used_flags, stage)
         assert flag_num is not None, "No flag found matching criteria for stage %d" % (i + 1)
-        flagdir = os.path.join(args.flag_pool_dir, "%02d" % flag_num)
+        flagdir = os.path.join(args.flag_pool_dir, "%03d" % flag_num)
         shutil.copyfile(os.path.join(flagdir, "flag"), os.path.join(stagedir, "flag"))
         with open(os.path.join(stagedir, "rounds"), "w") as f:
             f.write(str(flags[flag_num][stage.idx]))
@@ -123,7 +123,7 @@ def main():
                 stage.server_ports.append(ports)
                 f.write("\tupstream stage%02d_group%02d {\n\t\tleast_conn;\n" % (i + 1, group_num + 1))
                 for serv_port in ports:
-                    f.write("\t\tserver %s:%d;\n" % (args.servers_ip, serv_port))
+                    f.write("\t\tserver %s:%d;\n" % (stage.servers_ip, serv_port))
                 f.write("\t}\n")
                 f.write("\tserver {\n\t\tlisten %d;\n\t\tproxy_pass stage%02d_group%02d;\n\t}\n" % (stage.ports[group_num], i + 1, group_num + 1))
         f.write("}")
