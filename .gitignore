@@ -13,5 +13,6 @@ scripts/run_servers.sh
 nginx/conf/
 ctf/
 CTFd/*.zip
+CTFd/uploads/
 flag_pool/*/
 flag_pool/queries.json

@@ -8,11 +8,6 @@ if [ ! $# = 1 ]; then
 	echo "Usage: $0 <num_of_groups>" 1>&2
 	exit 2
 fi
-# Create CTF import file
-rm -f CTFd/ctf_import.zip
-cd CTFd
-zip -r ctf_import.zip db/
-cd ..
 # Run prepare.py
 mkdir -p nginx/conf
 python3.8 scripts/prepare.py ctf -n $1 --nginx-conf nginx/conf/nginx.conf --nginx-command scripts/run_nginx.sh --servers-build-command scripts/build_servers.sh --servers-run-command scripts/run_servers.sh --stages-conf stages.json --flag-pool-dir flag_pool
@@ -22,6 +17,13 @@ for grpdir in ctf/*/group; do
 	zip -r ../$(echo "$grpdir" | cut -f2 -d/).zip .
 	cd -
 done
+# Update CTFd export files
+python3.8 scripts/update_ctfd.py
+# Create CTF import file
+rm -f CTFd/ctf_import.zip
+cd CTFd
+zip -r ctf_import.zip db/ uploads/
+cd ..
 # Build nginx image
 cd nginx
 docker build -t ctf_servers_nginx .
