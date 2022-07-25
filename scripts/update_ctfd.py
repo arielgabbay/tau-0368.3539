@@ -8,7 +8,7 @@ import os
 def mkdir_lazy(dirpath):
     if os.path.isdir(dirpath):
         return
-    os.path.mkdir(dirpath)
+    os.mkdir(dirpath)
 
 def read_challenges():
     with open("stages.json", "r") as f:
@@ -63,7 +63,7 @@ def update_flags(challenges):
 
 def main():
     challenges = read_challenges()
-    update_files()
+    update_files(challenges)
     update_flags(challenges)
 
 if __name__ == "__main__":

@@ -14,5 +14,6 @@ nginx/conf/
 ctf/
 CTFd/*.zip
 CTFd/uploads/
+CTFd/db/
 flag_pool/*/
 flag_pool/queries.json

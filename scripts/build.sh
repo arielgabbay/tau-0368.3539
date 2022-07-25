@@ -18,9 +18,10 @@ for grpdir in ctf/*/group; do
 	cd -
 done
 # Update CTFd export files
+cp -r CTFd/db_base CTFd/db
 python3.8 scripts/update_ctfd.py
 # Create CTF import file
-rm -f CTFd/ctf_import.zip
+rm CTFd/ctf_import.zip || true
 cd CTFd
 zip -r ctf_import.zip db/ uploads/
 cd ..
