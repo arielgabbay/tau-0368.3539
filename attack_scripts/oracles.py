@@ -62,7 +62,7 @@ def _init_sock(method):
     return new_method
 
 
-class _MbedTLS_Oracle_Single:
+class MbedTLS_Oracle_Single:
     ERROR_INVALID_PADDING=91
 
     def __init__(self, addr, port, stage):
@@ -100,7 +100,7 @@ class _MbedTLS_Oracle_Single:
 
 def _worker_main(arg):
     addr, port, stage, query_queue, result_queue = arg
-    oracle = _MbedTLS_Oracle_Single(addr, port, stage)
+    oracle = MbedTLS_Oracle_Single(addr, port, stage)
     while True:
         query_id, content, args, kwargs = query_queue.get(True)
         result_queue.put((query_id, oracle.query(content, *args, **kwargs)), block=True)
