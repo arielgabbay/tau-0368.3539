@@ -125,7 +125,7 @@ To add a stage to the CTF, the following things are required:
   * The type of PKCS padding to use for the flag's encryption file (a string set to `PKCS_1_5` or to `PKCS_OAEP`).
   * The minimal number of queries needed to decrypt the flag for this stage. An appropriate flag is selected from the flag pool according to this value.
   * The maximal number of queries needed to decrypt the flag for this stage. An appropriate flag is selected from the flag pool according to this value.
-  * The IP address of the host running the stage's server containers (for `nginx` configuration).
+  * The IP address of the host running the stage's server containers (for `nginx` configuration). Notice that for running stage containers on the same host as the `nginx` container, the IP address given should be `172.17.0.1`, which is the default IP of the docker host.
 * Add the stage to the CTF in the CTFd platform and update the `CTFd/db` directory accordingly, as explained above.
 
 ## Running the attack (the solution script)
