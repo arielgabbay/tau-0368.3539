@@ -2,7 +2,6 @@
 Oracles for chosen-ciphertext attacks on PKCS #1
 """
 from Crypto.Cipher import PKCS1_v1_5
-import ssl_client
 import socket
 import struct
 import select
