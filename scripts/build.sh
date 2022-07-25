@@ -16,6 +16,12 @@ cd ..
 # Run prepare.py
 mkdir -p nginx/conf
 python3.8 scripts/prepare.py ctf -n $1 --nginx-conf nginx/conf/nginx.conf --nginx-command scripts/run_nginx.sh --servers-build-command scripts/build_servers.sh --servers-run-command scripts/run_servers.sh --stages-conf stages.json --flag-pool-dir flag_pool
+# Create zip files for groups
+for grpdir in ctf/*/group; do
+	cd "$grpdir"
+	zip -r ../$(echo "$grpdir" | cut -f2 -d/).zip .
+	cd -
+done
 # Build nginx image
 cd nginx
 docker build -t ctf_servers_nginx .

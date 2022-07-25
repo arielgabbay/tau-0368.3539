@@ -2,6 +2,7 @@
 from Crypto.PublicKey import RSA
 import Crypto.Cipher.PKCS1_v1_5 as PKCS_1_5
 import Crypto.Cipher.PKCS1_OAEP as PKCS_OAEP
+from distutils.dir_util import copy_tree
 import random
 import json
 import os
@@ -89,6 +90,9 @@ def main():
         os.mkdir(grpdir)
         shutil.copyfile(os.path.join(flagdir, "pubkey.bin"), os.path.join(grpdir, "pubkey.bin"))
         shutil.copyfile(os.path.join(flagdir, "enc%02d.bin" % stage.idx), os.path.join(grpdir, "enc.bin"))
+        material_dir = os.path.join("material/stage%02d" % stage_num)
+        if os.path.isdir(material_dir):
+            copy_tree(material_dir, grpdir)
 
     # Generate port numbers for stages
     curr_ports = set()

@@ -109,7 +109,7 @@ mbedtls/programs/ssl/ssl_server3 key_file=<...>/priv.key.pem crt_file=<...>/cert
 We recommend using `CTFd` to run the CTF. To do so, after preparing all files for the CTF, run
 
 ```
-docker run -p 80:8000 -it ctfd/ctfd
+docker run -p 80:8000 ctfd/ctfd
 ```
 
 This will run CTFd on port 80 of your machine. You can then configure CTF through the web interface. `build.sh` run above creates the file `CTFd/ctf_import.zip` from the directory `CTFd/db`, which is an export of the latest CTF configurations. To import this image, create a temporary CTF and the go to Admin Panel -> Backup -> Import to import the `ctf_import.zip` file. To update the image, make the changes you want (or create a new CTF from scratch if needed), and in the same menu as above, export it. CTFd will generate a ZIP file with a `db` directory in it; extract this directory to `CTFd/db` in the project.
