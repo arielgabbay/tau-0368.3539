@@ -21,6 +21,8 @@ def read_challenges():
         challenges = json.load(f)
     challenge_dict = {}
     for challenge in challenges['results']:
+        if challenge['category'] not in ("Bleichenbacher", "Manger"):
+            raise ValueError("Invalid challenge category: " + challenge['category'])
         base = 0 if challenge['category'] == "Bleichenbacher" else num_bleichenbacher_challenges
         try:
             challenge_num = int(re.findall("^Challenge ([0-9]+)$", challenge['name'])[0])

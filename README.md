@@ -55,6 +55,7 @@ ctf/
 		flag - a file containing the flag for this stage
 		queries - the number of queries needed to decrypt enc.bin
 		port - the port to be published (each groups XORs with its mask)
+		stage_XX.zip - the file given to the groups in the CTF
 		group/ - a directory with the files given to the group
 			enc.bin - PKCS encryption of the flag
 			pubkey.bin - public key of the server
@@ -73,6 +74,8 @@ CTFd/
 ```
 
 The stage files in the `ctf` directory are taken from the flag pool according to the requirements of each stage (padding type and query range). To modify the number of stages or what's created for each stage, modify the `stages.json` file (more on this in the section below on adding and configuring stages).
+
+The `zip` files are the files the groups download from the CTF platform. These files contain the files in `group/` (`enc.bin` and `pubkey.bin`) and any files in the directory `material/stage_XX` (such as documentation or redacted attack scripts). These files are replace in the base configuration of the CTF platform and are put in `ctf_import.zip`, as explained in the relevant section below.
 
 The way the servers are configured is thus:
 
@@ -112,7 +115,12 @@ We recommend using `CTFd` to run the CTF. To do so, after preparing all files fo
 docker run -p 80:8000 ctfd/ctfd
 ```
 
-This will run CTFd on port 80 of your machine. You can then configure CTF through the web interface. `build.sh` run above creates the file `CTFd/ctf_import.zip` from the directory `CTFd/db`, which is an export of the latest CTF configurations. To import this image, create a temporary CTF and the go to Admin Panel -> Backup -> Import to import the `ctf_import.zip` file. To update the image, make the changes you want (or create a new CTF from scratch if needed), and in the same menu as above, export it. CTFd will generate a ZIP file with a `db` directory in it; extract this directory to `CTFd/db` in the project.
+This will run CTFd on port 80 of your machine. You can then configure CTF through the web interface. `build.sh` run above creates the file `CTFd/ctf_import.zip` from the directory `CTFd/db_base`, which is an export of the latest CTF configurations. The script also updates the port numbers, flags and files of each challenge before creating `ctf_import.zip`; note that the scripts expect the names of the challenges and files to be of a certain format, as follows:
+
+* Challenges should be called "Challenge \<number\>". Each challenge should be in one of two categories, "Bleichenbacher" or "Manger". The challenges should correspond to challenges in the project configurations thus: first all Bleichenbacher challenges, followed by all Manger challenges, in the same order. The challenge number in the challenge name should be the number of the challenge (1-based) in that category.
+* Challenges should provide one file each, called `stage_<num>.zip`. These files are replaced by the script with newly created `zip` files for each stage.
+
+To import the image, create a temporary CTF and the go to Admin Panel -> Backup -> Import to import the `ctf_import.zip` file. To update the image, make the changes you want (or create a new CTF from scratch if needed), and in the same menu as above, export it. CTFd will generate a ZIP file with a `db` directory in it; extract this directory to `CTFd/db` in the project.
 
 ### Adding and configuring stages
 
@@ -126,9 +134,12 @@ To add a stage to the CTF, the following things are required:
   * The minimal number of queries needed to decrypt the flag for this stage. An appropriate flag is selected from the flag pool according to this value.
   * The maximal number of queries needed to decrypt the flag for this stage. An appropriate flag is selected from the flag pool according to this value.
   * The IP address of the host running the stage's server containers (for `nginx` configuration). Notice that for running stage containers on the same host as the `nginx` container, the IP address given should be `172.17.0.1`, which is the default IP of the docker host.
-* Add the stage to the CTF in the CTFd platform and update the `CTFd/db` directory accordingly, as explained above.
+* Add the stage to the CTF in the CTFd platform and update the `CTFd/db_base` directory accordingly, as explained above.
+* To add files given to the participants other than the public key and encrypted flag, add files to the directory `material/stage_XX`, where `XX` is the stage number. The CTF-building scripts will make sure these files are added to the `zip` file attached to the challenge.
 
-## Running the attack (the solution script)
+## Solution scripts and tests
+
+### Running the attack scripts
 
 The attack scripts expect a public key file, and can also take a valid encryption of a message using the server's key (to skip the blinding phase of the Bleichenbacher attack); in the CTF, this message is the encrypted flag. To run the Bleichenbacher attack, for example, run
 
@@ -137,6 +148,22 @@ python3.8 attack_scripts/bleichenbacher.py -n <num_of_servers> -p <server_port> 
 ```
 
 The attack scripts expects there to be `<num_of_servers>`  servers listening with the appropriate oracle on the IP and port given (there may be one server instance with several processes, of course). The encryption and public key files are the relevant files (`enc.bin` and `pubkey.bin`, respectively) in the group's files from the flag pool (selected by `build.sh`, as shown above). Run the script with `--help` for more details. The script outputs the padded message given in `enc.bin` and (if found) its "unpadded" message, which should be the flag.
+
+### Tests
+
+In the `tests` directory there is a test script, to be run from the project root directory thus:
+
+```
+pytest tests/
+```
+
+We recommend installing `pytest-xdist` and parallelizing the tests:
+
+```
+pytest --dist=load -n <num_of_processes> tests/
+```
+
+The test runs the solution attack script for each stage for all groups, according to the configuration it reads from the various files in the project. Run the tests after running `build.sh` and `run.sh`, where all containers are run locally (or run them non-locally and modify the script so it runs attack scripts with a different server address).
 
 ## Modifications to MbedTLS
 
