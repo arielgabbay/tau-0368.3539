@@ -189,6 +189,8 @@ pytest --dist=load -n <num_of_processes> tests/
 
 The test runs the solution attack script for each stage for all groups, according to the configuration it reads from the various files in the project. Run the tests after running `build.sh` and `run.sh`, where all containers are run locally (or run them non-locally and modify the script so it runs attack scripts with a different server address).
 
+Note that `pytest` and `pytest-xdist` are not included in the `requirements.txt` file, so if you're using the project's `virtualenv`, you'll need to `pip install` them.
+
 ## Modifications to MbedTLS
 
 ### General changes
