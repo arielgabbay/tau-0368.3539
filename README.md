@@ -23,6 +23,30 @@ The stages are as follows:
 
 ## Preparing the CTF
 
+### Prerequisites
+
+You'll need Python (we use version 3.8 and recommend you do as well), `docker`, and if you want to run the project's tests, the `pytest` package (more on this in the relevant section below). CTF participants will need Python installed, as well. To use the project `virtualenv`, the participants and you will need the `virtualenv` package (more on this soon).
+
+### Creating and using the project `virtualenv`
+
+To save time installing Python libraries needed for building the CTF and running various related scripts, the project contains a `requirements.txt` file with which you can create a `virtualenv`. Other parts of the CTF are all run in docker containers whose images are built in the project (more on this soon), so system requirements are minimal. If `virtualenv` is not installed on your machine, run
+
+```
+pip install virtualenv
+```
+
+To create the environment, choose a name for it (we suggest something ending with `_env` as it's in the `.gitignore` file), and run
+
+```
+virtualenv <env_name>
+source <env_name>/bin/activate
+pip install -r requirements.txt
+```
+
+To activate the environment later, run the second line above (`source <env_name>/bin/activate`); to deactivate it, run `deactivate`.
+
+The same instructions are given to the CTF participants so they can also run the scripts given to them in the CTF challenges on their machines.
+
 ### Preparing flags and keys (the "flag pool")
 
 As each challenge should have its own flag and RSA keys, the first thing to be done is to generate a pool of flags and corresponding keys (and encrypted flags, etc.)
