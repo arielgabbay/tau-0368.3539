@@ -17,3 +17,4 @@ CTFd/uploads/
 CTFd/db/
 flag_pool/*/
 flag_pool/queries.json
+*_env/
