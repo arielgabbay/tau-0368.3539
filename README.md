@@ -234,3 +234,8 @@ For PKCS 1 OAEP (Manger),
   * Decrypts with `mbedtls_rsa_private`.
   * Checks padding in "constant time"; here as well we install `NOT_CONSTANT_TIME` where needed to return the new error value.
 
+## TODO
+
+* Make the servers and challenges stateless by adding a server for each stage which distributes encrypted flags which are signatures of flag+timestamp and verifies them. This limits the lifetime of a flag encryption and makes server sleeps in even stages redundant.
+* Add a mini-stage to begin with, using the simple attack from the exam.
+* Prepare the introduction to the CTF and other material such as attack pseudo-code.
