@@ -107,7 +107,7 @@ and then run the server using a command as in `servers/Dockerfile`,
 mbedtls/programs/ssl/ssl_server3 key_file=<...>/priv.key.pem crt_file=<...>/cert.crt force_version=tls12 force_ciphersuite=TLS-RSA-PSK-WITH-AES-128-CBC-SHA256 psk=abcdef stage=<stage> num_servers=<num_threads> server_port=<port>
 ```
 
-### Preparing the platform
+### The `CTFd` platform
 
 The CTF is hosted on `CTFd`, with a few plugins of ours, on which we expand later in this document. The `CTFd` image is run by `run.sh`, but can be run manually thus:
 
@@ -131,9 +131,9 @@ The stages of the CTF in `CTFd` are challenges of the type "cookie", which is ad
 * The life span of a flag in this challenge; flags can be changed once every certain period of time if needed.
 * The padding type (PKCS 1.5 or PKCS OAEP) used to generate flags.
 
-The plugin runs a process on the `CTFd` container that generates flags and their encryptions in the background. An additional database table stores these flags, which are then used by the plugin when it selects flags according to the parameters given. Balancing the values of the number of queries to decrypt a flag and the flags' life span allows for enforcement of efficient or parallelized attacks. When adding a challenge in the admin panel of `CTFd`, make sure you select "cookie"-type challenges (if that's what you need) and that you fill in the various relevant fields (some are visible only after saving the challenge initially). When making "cookie" challenges visible, `CTFd` will warn you that no flag is configured; this is fine as the plugin takes care of flags.
+The plugin runs a process on the `CTFd` container that generates flags and their encryptions in the background. An additional database table stores these flags, which are then used by the plugin when it selects flags according to the parameters given. Balancing the values of the number of queries to decrypt a flag and the flags' life span allows for enforcement of efficient or parallelized attacks. When adding a challenge in the admin panel of `CTFd`, make sure you select "cookie"-type challenges (if that's what you need) and that you fill in the various relevant fields (some are visible only after saving the challenge initially). When making "cookie" challenges visible, `CTFd` will warn you that no flag is configured; this is fine as the plugin takes care of flags. Notice that as flags are generated in a process on the `CTFd` container, if you add a challenge shortly after the container first runs, flags may not be available for it and an error will be displayed when creating the challenge. This is OK, as when flags are available, the challenge will work.
 
-Another feature added by our plugins is a countdown clock on challenge pages, showing participants the amount of time left for a flag's validity (if relevant), and an extra "download" button that downloads the latest encrypted flag for each challenge (also on its page).
+Another feature added by our plugins is a countdown clock on challenge pages, showing participants the amount of time left for a flag's validity (if relevant), and an extra "download" button that downloads the latest encrypted flag for each challenge (also on its page). Notice also that when submitting a flag, there are a few possible outputs: if the flag is correct and valid (still active for the challenge), it is accepted; if it's correct but no longer active (expired), a message stating this is displayed; if it's incorrect, there's an appropriate message; and if it's not in the correct format (not a 32-character hex string), a different message stating this is displayed.
 
 ### Adding and configuring stages
 
