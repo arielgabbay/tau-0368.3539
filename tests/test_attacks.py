@@ -20,8 +20,6 @@ class StageInfo:
             self.flag = f.read()
         with open(os.path.join(stagedir, "port"), "r") as f:
             self.port = int(f.read())
-        with open(os.path.join(stagedir, "queries"), "r") as f:
-            self.num_queries = int(f.read())
         self.ports = [self.port ^ mask for mask in group_masks]
         self.raw_conf = stage_conf[:]
         self.attack_script = os.path.join(ATTACK_SCRIPT_DIR, ATTACK_SCRIPTS[self.raw_conf[2]])
