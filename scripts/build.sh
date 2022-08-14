@@ -18,6 +18,7 @@ for grpdir in ctf/*/group; do
 	cd -
 done
 # Update CTFd export files
+rm -r CTFd_export/db || true
 cp -r CTFd_export/db_base/* CTFd_export/db
 rm CTFd_export/db/pool_flags.json || true
 python3.8 scripts/update_ctfd.py
