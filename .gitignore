@@ -12,9 +12,9 @@ scripts/run_nginx.sh
 scripts/run_servers.sh
 nginx/conf/
 ctf/
-CTFd/*.zip
-CTFd/uploads/
-CTFd/db/
+CTFd_export/*.zip
+CTFd_export/uploads/
+CTFd_export/db/
 flag_pool/*/
 flag_pool/queries.json
 *_env/
