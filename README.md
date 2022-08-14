@@ -8,14 +8,14 @@ In this document we go over the various parts of the project and the CTF that it
 
 ## CTF overview
 
-The CTF consists of various stages (challenges), some of which are rely on previous stages. The participants are divided into groups, and each group gets a secret "mask" (a 16-bit number) from which it derives port numbers for each challenge, as we describe shortly. Each challenge consists of a few redacted scripts that implement Bleichenbacher or Manger attacks on a remote TLS server, an encrypted file to be decrypted using these attacks, and a port number. Each group derives from the port number a unique port number on which the server to be attacked by that group (for that challenge) is listening. The server for each stage is vulnerable in some way to these attacks, and the challenge is to implement the attacks, or relevant extensions thereof, in order to decrypt the given encryption, which contains the flag.
+The CTF consists of various stages (challenges), some of which are rely on previous stages. Each challenge consists of a few redacted scripts that implement Bleichenbacher or Manger attacks on a remote TLS server, an encrypted file to be decrypted using these attacks, and a port number on which a server is listening (on an address known to the candidates and determined by the organizers). The server for each stage is vulnerable in some way to these attacks, and the challenge is to implement the attacks, or relevant extensions thereof, in order to decrypt the given encryption, which contains the flag.
 
 The stages are as follows:
 
 1. The server for the first stage is a simplified PKCS 1 v1.5 padding oracle: once a connection is opened and TLS "hello" messages are exchanged, the server listens for client handshake messages containing an encrypted pre-master secret, attempts to decrypt and un-pad these messages, and sends a TLS error frame with a value that denotes success or failure in unpadding.
-2. The server for the second stage is the same as the first stage, but it closes connections and stops responding to requests for fifteen minutes if a certain number of queries are exceeded in a single connection. As servers are multi-process, in this challenge the participants should implement multi-threaded attacks, querying several instances of the server simultaneously. In this stage (and in similar subsequent stages), the number of queries until the server "times out" and the number of queries required to decrypt the flag are matched in advance. Notice that all server processes (derived from the same instance) stop once one server has processed too many queries, in order to prevent groups from simply continuing the attack on a different instance. The time penalty is also "harsh" in order to prevent groups from simply waiting and continuing the attack once the server is back online.
+2. The server for the second stage is the same as the first stage, but flags expire after a few minutes (once a flag expires, a different flag, and hence a different encryption, is used). The flag timeout is such that the original attack isn't fast enough to retrieve flags on time; as servers are multi-processed, in this challenge the participants should implement multi-threaded attacks, querying several instances of the server simultaneously. There are a few methods to do this, and the template script given to the participants in this stage sends consecutive queries such that the server's work is somewhat parallelized.
 3. The server for the third stage does not provide a "direct" oracle, but does simulate a timing oracle: on successful unpadding, it sleeps for 50 milliseconds. The participants should implement the querying logic that times requests and answers accordingly.
-4. The fourth stage is like the third stage but with the same challenge as in stage 2: the server disconnects once too many requests are made, so attacks should be made multi-threaded.
+4. The fourth stage is like the third stage but with the same challenge as in stage 2: the flag is changed every few minutes, so attacks should be made multi-threaded.
 5. The server for the fifth stage does not provide a simple timing oracle, but rather sleeps for 0 to 100 milliseconds on successful unpadding of a message. Once again, the CTF participants should modify their querying code accordingly.
 6. The sixth stage is to the fifth as the fourth is to the third.
 7. The server for the seventh stage provides a simplified PKCS 1 OAEP padding oracle as in stage 1. In this stage, the Manger attack should be implemented.
@@ -47,21 +47,6 @@ To activate the environment later, run the second line above (`source <env_name>
 
 The same instructions are given to the CTF participants so they can also run the scripts given to them in the CTF challenges on their machines.
 
-### Preparing flags and keys (the "flag pool")
-
-As each challenge should have its own flag and RSA keys, the first thing to be done is to generate a pool of flags and corresponding keys (and encrypted flags, etc.)
-
-Generating such a pool allows for flexibility when choosing keys for various challenges, as the keys and flags can be chosen such that a certain number of oracle queries is required in order to execute an attack fully and decrypt the flag file.
-
-To generate a flag pool, run (from the project's root directory)
-
-```
-cd flag_pool
-python3.8 generate_flag_pool.py -n <pool_size> -d .
-```
-
-Running this will create a directory in `flag_pool/` for every key/flag pair generated with a matching number, and a file `flag_pool/queries.json` that stores for each of these pairs the number of oracle queries required to run a Bleichenbacher or a Manger attack on the encrypted flag. As the script runs the attacks locally to determine the number of queries, it may take a while (it runs ten key-generation processes concurrently to make things a bit quicker). There's no particular need to delve into the results of this script as long as it terminates successfully.
-
 ### Preparing files and servers
 
 To prepare the files and scripts needed for the CTF, run (from the root directory of the project),
@@ -74,18 +59,13 @@ This script will generate the following directories and files:
 
 ```
 ctf/
-	group_masks - mask values for ports for the group servers
+	server/ - file for running the target server(s)
+		cert.crt - certificate file
+		priv.key.pem - private key
+		pubkey.bin - public key of the server
 	stage_XX/ - the directory for stage XX of the CTF
-		flag - a file containing the flag for this stage
-		queries - the number of queries needed to decrypt enc.bin
-		port - the port to be published (each groups XORs with its mask)
+		port - the port on which the server for this stage listens
 		stage_XX.zip - the file given to the groups in the CTF
-		group/ - a directory with the files given to the group
-			enc.bin - PKCS encryption of the flag
-			pubkey.bin - public key of the server
-		server/ - files for running the stage's target server
-			cert.crt - certificate file
-			priv.key.pem - private key
 scripts/
 	build_servers.sh
 	run_servers.sh
@@ -93,17 +73,13 @@ scripts/
 nginx/
 	conf/
 		nginx.conf
-CTFd/
+CTFd_export/
 	ctf_import.zip
 ```
 
-The stage files in the `ctf` directory are taken from the flag pool according to the requirements of each stage (padding type and query range). To modify the number of stages or what's created for each stage, modify the `stages.json` file (more on this in the section below on adding and configuring stages).
+The `zip` files are the files the groups download from the CTF platform. These files contain the server's public key (currently the same for all stages, but this can be changed in the future if needed) and any files in the directory `material/stage_XX` (such as documentation or redacted attack scripts). These files are replaced in the base configuration of the CTF platform and are put in `ctf_import.zip`, as explained in the relevant section below.
 
-The `zip` files are the files the groups download from the CTF platform. These files contain the files in `group/` (`enc.bin` and `pubkey.bin`) and any files in the directory `material/stage_XX` (such as documentation or redacted attack scripts). These files are replace in the base configuration of the CTF platform and are put in `ctf_import.zip`, as explained in the relevant section below.
-
-The way the servers are configured is thus:
-
-At the start of the event, each group gets a "secret" mask; these values are generated by `build.sh` and stored in `ctf/group_masks`. On each level, a port number is released (the same number for all groups); this is the port in the `port` file in each stage directory. Each group takes this number, XORs it with its mask, and gets the port number of the server to attack for that stage of the CTF. The `nginx` container forwards connections from the main machine to the server containers themselves; its configuration (`nginx/conf/nginx.conf`) holds all the ports and addresses, internal and external. In some stages, more than one server instance is run for each group, and more than one thread is generated in each server instance. These numbers are specified in `stages.json` and can be modified there (more on this soon). This detail is not visible (directly, at least) to the teams, as all servers are "internal" and the `nginx` container forwards connections from the teams to the servers themselves.
+The `nginx` container forwards connections from the main machine to the server containers themselves; its configuration (`nginx/conf/nginx.conf`) holds all the ports and addresses of the servers, internal and external, which are generated by `build.sh`. In some stages, more than one server instance is run for each group, and more than one thread is generated in each server instance. These numbers are specified in `stages.json` and can be modified there (more on this soon). This detail is not visible (directly, at least) to the teams, as all servers are "internal" and the `nginx` container forwards connections from the teams to the servers themselves.
 
 The `build_*.sh` files in the `scripts` directory are used by the `build.sh` script. The `run_*.sh` files are used by the `run.sh` script.
 
@@ -117,7 +93,7 @@ So to get everything going, run (after running `build.sh`, of course)
 ./scripts/run.sh
 ```
 
-This will run the `nginx` container and **all** the server instances from the `nginx` directory in this project; this is to be run on the host machine. To run different server instances on different hosts, run only `./scripts/run_nginx.sh`, and take the commands needed for each stage from `scripts/run_servers.sh`, running them where needed.
+This will run the `nginx` container and **all** the server instances from the `nginx` directory in this project; this is to be run on the host machine. To run different server instances on different hosts, run only `./scripts/run_nginx.sh`, and take the commands needed for each stage from `scripts/run_servers.sh`, running them where needed. This also runs the `CTFd` image on which the CTF is hosted.
 
 To build the server binary manually for testing, run
 
@@ -133,18 +109,31 @@ mbedtls/programs/ssl/ssl_server3 key_file=<...>/priv.key.pem crt_file=<...>/cert
 
 ### Preparing the platform
 
-We recommend using `CTFd` to run the CTF. To do so, after preparing all files for the CTF, run
+The CTF is hosted on `CTFd`, with a few plugins of ours, on which we expand later in this document. The `CTFd` image is run by `run.sh`, but can be run manually thus:
 
 ```
-docker run -p 80:8000 ctfd/ctfd
+cd CTFd/
+docker-compose up
 ```
 
-This will run CTFd on port 80 of your machine. You can then configure CTF through the web interface. `build.sh` run above creates the file `CTFd/ctf_import.zip` from the directory `CTFd/db_base`, which is an export of the latest CTF configurations. The script also updates the port numbers, flags and files of each challenge before creating `ctf_import.zip`; note that the scripts expect the names of the challenges and files to be of a certain format, as follows:
+This will run CTFd on port 80 of your machine. You can then configure CTF through the web interface. `build.sh` run above creates the file `CTFd_export/ctf_import.zip` from the directory `CTFd_export/db_base`, which is an export of the latest CTF configurations. The script also updates the port numbers, flags and files of each challenge before creating `ctf_import.zip`; note that the scripts expect the names of the challenges and files to be of a certain format, as follows:
 
 * Challenges should be called "Challenge \<number\>". Each challenge should be in one of two categories, "Bleichenbacher" or "Manger". The challenges should correspond to challenges in the project configurations thus: first all Bleichenbacher challenges, followed by all Manger challenges, in the same order. The challenge number in the challenge name should be the number of the challenge (1-based) in that category.
 * Challenges should provide one file each, called `stage_<num>.zip`. These files are replaced by the script with newly created `zip` files for each stage.
+* Notice that as the server's key changes between builds, the `pool_flags.json` file in the exported directory is ignored, as flags encryptions differ.
 
-To import the image, create a temporary CTF and the go to Admin Panel -> Backup -> Import to import the `ctf_import.zip` file. To update the image, make the changes you want (or create a new CTF from scratch if needed), and in the same menu as above, export it. CTFd will generate a ZIP file with a `db` directory in it; extract this directory to `CTFd/db` in the project.
+To import the image, create a temporary CTF and the go to Admin Panel -> Backup -> Import to import the `ctf_import.zip` file. To update the image, make the changes you want (or create a new CTF from scratch if needed), and in the same menu as above, export it. `CTFd` will generate a ZIP file with a `db` directory in it; extract this directory to `CTFd_export/db_base` in the project.
+
+The stages of the CTF in `CTFd` are challenges of the type "cookie", which is added by our plugin. This is a special type of challenge which allows a few relevant configurations:
+
+* The minimal number of queries needed to decrypt flags for this stage. An appropriate flag is selected according to this value.
+* The maximal number of queries needed to decrypt flags for this stage. An appropriate flag is selected according to this value.
+* The life span of a flag in this challenge; flags can be changed once every certain period of time if needed.
+* The padding type (PKCS 1.5 or PKCS OAEP) used to generate flags.
+
+The plugin runs a process on the `CTFd` container that generates flags and their encryptions in the background. An additional database table stores these flags, which are then used by the plugin when it selects flags according to the parameters given. Balancing the values of the number of queries to decrypt a flag and the flags' life span allows for enforcement of efficient or parallelized attacks. When adding a challenge in the admin panel of `CTFd`, make sure you select "cookie"-type challenges (if that's what you need) and that you fill in the various relevant fields (some are visible only after saving the challenge initially). When making "cookie" challenges visible, `CTFd` will warn you that no flag is configured; this is fine as the plugin takes care of flags.
+
+Another feature added by our plugins is a countdown clock on challenge pages, showing participants the amount of time left for a flag's validity (if relevant), and an extra "download" button that downloads the latest encrypted flag for each challenge (also on its page).
 
 ### Adding and configuring stages
 
@@ -155,10 +144,8 @@ To add a stage to the CTF, the following things are required:
   * The number of server instances to run. Each instance is a container instance. Each instance can also run multiple processes, as specified in the next value:
   * The number of processes each server instance should spawn.
   * The type of PKCS padding to use for the flag's encryption file (a string set to `PKCS_1_5` or to `PKCS_OAEP`).
-  * The minimal number of queries needed to decrypt the flag for this stage. An appropriate flag is selected from the flag pool according to this value.
-  * The maximal number of queries needed to decrypt the flag for this stage. An appropriate flag is selected from the flag pool according to this value.
   * The IP address of the host running the stage's server containers (for `nginx` configuration). Notice that for running stage containers on the same host as the `nginx` container, the IP address given should be `172.17.0.1`, which is the default IP of the docker host.
-* Add the stage to the CTF in the CTFd platform and update the `CTFd/db_base` directory accordingly, as explained above.
+* Add the stage to the CTF in the `CTFd` platform and update the `CTFd/db_base` directory accordingly, as explained above.
 * To add files given to the participants other than the public key and encrypted flag, add files to the directory `material/stage_XX`, where `XX` is the stage number. The CTF-building scripts will make sure these files are added to the `zip` file attached to the challenge.
 
 ## Solution scripts and tests
@@ -187,7 +174,7 @@ We recommend installing `pytest-xdist` and parallelizing the tests:
 pytest --dist=load -n <num_of_processes> tests/
 ```
 
-The test runs the solution attack script for each stage for all groups, according to the configuration it reads from the various files in the project. Run the tests after running `build.sh` and `run.sh`, where all containers are run locally (or run them non-locally and modify the script so it runs attack scripts with a different server address).
+The test runs the solution attack script for each stage, according to the configuration it reads from the various files in the project. Run the tests after running `build.sh` and `run.sh`, where all containers are run locally (or run them non-locally and modify the script so it runs attack scripts with a different server address).
 
 Note that `pytest` and `pytest-xdist` are not included in the `requirements.txt` file, so if you're using the project's `virtualenv`, you'll need to `pip install` them.
 
@@ -234,8 +221,8 @@ For PKCS 1 OAEP (Manger),
   * Decrypts with `mbedtls_rsa_private`.
   * Checks padding in "constant time"; here as well we install `NOT_CONSTANT_TIME` where needed to return the new error value.
 
-## TODO
+## Newer possible stages
 
-* Make the servers and challenges stateless by adding a server for each stage which distributes encrypted flags which are signatures of flag+timestamp and verifies them. This limits the lifetime of a flag encryption and makes server sleeps in even stages redundant.
-* Add a mini-stage to begin with, using the simple attack from the exam.
-* Prepare the introduction to the CTF and other material such as attack pseudo-code.
+* A simple preliminary stage with a Bleichenbacher-like attack that gives the idea of how the more complex attack works.
+* Manger challenges that require statistical analysis of several queries to determine padding status.
+* Stages where the flag is not padded before being encrypted, for which the "blinding" phase of the attack could be relevant.

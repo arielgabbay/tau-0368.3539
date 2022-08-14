@@ -20,7 +20,6 @@ class StageInfo:
             self.flag = f.read()
         with open(os.path.join(stagedir, "port"), "r") as f:
             self.port = int(f.read())
-        self.ports = [self.port ^ mask for mask in group_masks]
         self.raw_conf = stage_conf[:]
         self.attack_script = os.path.join(ATTACK_SCRIPT_DIR, ATTACK_SCRIPTS[self.raw_conf[2]])
         self.num_processes = self.raw_conf[1] if stage_num in PARALLEL_STAGES else 1
@@ -44,17 +43,15 @@ class CTFInfo:
 ctf_info = CTFInfo(CTF_DIR)
 
 stage_nums = list(range(1, len(ctf_info.stages) + 1))
-group_nums = list(range(1, len(ctf_info.group_masks) + 1))
-test_params = list(itertools.product(stage_nums, group_nums))
 
-@pytest.mark.parametrize("stage_num,group_num", test_params)
+@pytest.mark.parametrize("stage_num", stage_nums)
 def test_stage(stage_num, group_num):
     stage = ctf_info.stages[stage_num - 1]
     enc_file = os.path.join(CTF_DIR, "stage_%02d" % stage_num, "group", "enc.bin")
     key_file = os.path.join(CTF_DIR, "stage_%02d" % stage_num, "group", "pubkey.bin")
     sp = subprocess.Popen(["python3.8", stage.attack_script, "-s", "127.0.0.1", "-c", enc_file, "-k",
                            key_file, "-l", "1024", "-g", str(stage_num), "-n",
-                           str(stage.num_processes), "-p", str(stage.ports[group_num - 1])],
+                           str(stage.num_processes), "-p", str(stage.port)],
                           stderr=subprocess.PIPE, stdout=subprocess.PIPE)
     errval = sp.wait(timeout=60 * stage.timeout)
     assert errval == 0, ("Attack returned %d:\n" % errval) + sp.stderr.read().decode()
