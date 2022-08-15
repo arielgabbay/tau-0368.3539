@@ -10,7 +10,7 @@ if [ ! $# = 1 ]; then
 fi
 # Run prepare.py
 mkdir -p nginx/conf
-python3.8 scripts/prepare.py ctf -n $1 --nginx-conf nginx/conf/nginx.conf --nginx-command scripts/run_nginx.sh --servers-build-command scripts/build_servers.sh --servers-run-command scripts/run_servers.sh --stages-conf stages.json
+python scripts/prepare.py ctf -n $1 --nginx-conf nginx/conf/nginx.conf --nginx-command scripts/run_nginx.sh --servers-build-command scripts/build_servers.sh --servers-run-command scripts/run_servers.sh --stages-conf stages.json
 # Create zip files for groups
 for grpdir in ctf/*/group; do
 	cd "$grpdir"
@@ -19,9 +19,10 @@ for grpdir in ctf/*/group; do
 done
 # Update CTFd export files
 rm -r CTFd_export/db || true
+mkdir CTFd_export/db
 cp -r CTFd_export/db_base/* CTFd_export/db
 rm CTFd_export/db/pool_flags.json || true
-python3.8 scripts/update_ctfd.py
+python scripts/update_ctfd.py
 # Create CTF import file
 rm CTFd_export/ctf_import.zip || true
 cd CTFd_export

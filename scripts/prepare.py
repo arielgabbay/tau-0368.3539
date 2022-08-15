@@ -10,6 +10,7 @@ import sys
 import argparse
 import shutil
 import subprocess
+import itertools
 
 class Stage:
     def __init__(self, servers_per_group, threads_per_server, pkcs_class, servers_ip):
@@ -21,7 +22,7 @@ class Stage:
         self.server_ports = []
         self.servers_ip = servers_ip
 
-PKCS_CLASSES = {"PKCS_1_5": PKCS_1_5, "PKCS_OAEP": PKCS_OAEP}
+PKCS_CLASSES = {"PKCS_1_5": PKCS_1_5, "PKCS_OAEP": PKCS_OAEP, "None": None}
 
 SUBJ = "/C=GB/ST=London/L=London/O=Global Security/OU=IT Department/CN=example.com"
 
@@ -75,21 +76,25 @@ def main():
         f.write(key.e.to_bytes(key.size_in_bytes(), byteorder="big"))
 
     for i, stage in enumerate(stages):
-        stage_num = i + 1
-        stagedir = os.path.join(args.ctf_dir, "stage_%02d" % stage_num)
+        stagedir = os.path.join(args.ctf_dir, "stage_%02d" % i)
         os.mkdir(stagedir)
         grpdir = os.path.join(stagedir, "group")
         os.mkdir(grpdir)
         shutil.copyfile(os.path.join(servdir, "pubkey.bin"), os.path.join(grpdir, "pubkey.bin"))
-        material_dir = os.path.join("material/stage%02d" % stage_num)
+        material_dir = os.path.join("material/stage%02d" % i)
         if os.path.isdir(material_dir):
             copy_tree(material_dir, grpdir)
+        # Generate a ciphertext for introduction stage
+        if i == 0:
+            val = random.randrange(0, key.n)
+            with open(os.path.join(grpdir, "enc.bin"), "wb") as f:
+                f.write(pow(val, key.e, key.n).to_bytes(key.size_in_bytes(), byteorder="big"))
 
     # Generate port numbers for stages
     internal_ports = set()
     external_ports = set()
     for i, stage in enumerate(stages):
-        stagedir = os.path.join(args.ctf_dir, "stage_%02d" % (i + 1))
+        stagedir = os.path.join(args.ctf_dir, "stage_%02d" % i)
         while True:
             external = random.randrange(3000, 10000)
             if external not in external_ports:
@@ -108,31 +113,35 @@ def main():
 
     # Generate server-running stuff
     with open(args.nginx_command, "w") as f:
+        f.write("set -e\n")
         ports_str = " -p ".join("%d:%d" % (p, p) for p in external_ports)
-        f.write("docker run --name ctf_servers_nginx1 -p %s -d ctf_servers_nginx" % ports_str)
+        f.write("docker run --name ctf_servers_nginx1 -p %s -d ctf_servers_nginx\n" % ports_str)
 
     with open(args.nginx_conf, "w") as f:
         f.write("events {}\nstream {\n")
         for i, stage in enumerate(stages):
-            f.write("\tupstream stage%02d {\n\t\tleast_conn;\n" % (i + 1))
+            f.write("\tupstream stage%02d {\n\t\tleast_conn;\n" % i)
             for serv_port in stage.server_ports:
                 f.write("\t\tserver %s:%d;\n" % (stage.servers_ip, serv_port))
             f.write("\t}\n")
-            f.write("\tserver {\n\t\tlisten %d;\n\t\tproxy_pass stage%02d;\n\t}\n" % (stage.port, i + 1))
+            f.write("\tserver {\n\t\tlisten %d;\n\t\tproxy_pass stage%02d;\n\t}\n" % (stage.port, i))
         f.write("}")
 
     with open(args.servers_build_command, "w") as f:
-        for i, stage in enumerate(stages):
+        f.write("set -e\n")
+        key_file = os.path.join(servdir, "priv.key.pem")
+        crt_file = os.path.join(servdir, "cert.crt")
+        f.write("docker build -f servers/Dockerfile_intro -t stage00 . --build-arg SERVER_SCRIPT=servers/intro_server.py --build-arg PRIVKEY=%s --build-arg NUM_SERVERS=%d\n" % (key_file, stage.threads_per_server))
+        for i, stage in enumerate(itertools.islice(stages, 1, len(stages))):
             f.write("# STAGE %02d\n" % (i + 1))
             stagedir = os.path.join(args.ctf_dir, "stage_%02d" % (i + 1))
-            key_file = os.path.join(servdir, "priv.key.pem")
-            crt_file = os.path.join(servdir, "cert.crt")
             f.write("docker build -f servers/Dockerfile_stage -t stage%02d . --build-arg PRIVKEY=%s --build-arg CERT=%s --build-arg STAGE=%d --build-arg NUM_SERVERS=%d\n" % (i + 1, key_file, crt_file, i + 1, stage.threads_per_server))
 
     with open(args.servers_run_command, "w") as f:
+        f.write("set -e\n")
         for i, stage in enumerate(stages):
             for j, serv_port in enumerate(stage.server_ports):
-                f.write("docker run --name stage%02d_%02d -p %d:4433 -d stage%02d\n" % (i + 1, j + 1, serv_port, i + 1))
+                f.write("docker run --name stage%02d_%02d -p %d:4433 -d stage%02d\n" % (i, j + 1, serv_port, i))
 
 if __name__ == "__main__":
     sys.exit(main())
