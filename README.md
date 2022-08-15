@@ -12,14 +12,15 @@ The CTF consists of various stages (challenges), some of which are rely on previ
 
 The stages are as follows:
 
-1. The server for the first stage is a simplified PKCS 1 v1.5 padding oracle: once a connection is opened and TLS "hello" messages are exchanged, the server listens for client handshake messages containing an encrypted pre-master secret, attempts to decrypt and un-pad these messages, and sends a TLS error frame with a value that denotes success or failure in unpadding.
-2. The server for the second stage is the same as the first stage, but flags expire after a few minutes (once a flag expires, a different flag, and hence a different encryption, is used). The flag timeout is such that the original attack isn't fast enough to retrieve flags on time; as servers are multi-processed, in this challenge the participants should implement multi-threaded attacks, querying several instances of the server simultaneously. There are a few methods to do this, and the template script given to the participants in this stage sends consecutive queries such that the server's work is somewhat parallelized.
-3. The server for the third stage does not provide a "direct" oracle, but does simulate a timing oracle: on successful unpadding, it sleeps for 50 milliseconds. The participants should implement the querying logic that times requests and answers accordingly.
-4. The fourth stage is like the third stage but with the same challenge as in stage 2: the flag is changed every few minutes, so attacks should be made multi-threaded.
-5. The server for the fifth stage does not provide a simple timing oracle, but rather sleeps for 0 to 100 milliseconds on successful unpadding of a message. Once again, the CTF participants should modify their querying code accordingly.
-6. The sixth stage is to the fifth as the fourth is to the third.
-7. The server for the seventh stage provides a simplified PKCS 1 OAEP padding oracle as in stage 1. In this stage, the Manger attack should be implemented.
-8. Once again, stage 8 is a parallelized version of stage 7.
+1. The first challenge is an introductory challenge with a simplified version of the attacks implemented in later stages. Refer to the challenge description in the CTF platform and to the material given with the stage (`material/stage_00`) for more details. Once this stage is done, the next stage is opened.
+2. The server for the first stage is a simplified PKCS 1 v1.5 padding oracle: once a connection is opened and TLS "hello" messages are exchanged, the server listens for client handshake messages containing an encrypted pre-master secret, attempts to decrypt and un-pad these messages, and sends a TLS error frame with a value that denotes success or failure in unpadding.
+3. The server for the second stage is the same as the first stage, but flags expire after a few minutes (once a flag expires, a different flag, and hence a different encryption, is used). The flag timeout is such that the original attack isn't fast enough to retrieve flags on time; as servers are multi-processed, in this challenge the participants should implement multi-threaded attacks, querying several instances of the server simultaneously. There are a few methods to do this, and the template script given to the participants in this stage sends consecutive queries such that the server's work is somewhat parallelized.
+4. The server for the third stage does not provide a "direct" oracle, but does simulate a timing oracle: on successful unpadding, it sleeps for 50 milliseconds. The participants should implement the querying logic that times requests and answers accordingly.
+5. The fourth stage is like the third stage but with the same challenge as in stage 2: the flag is changed every few minutes, so attacks should be made multi-threaded.
+6. The server for the fifth stage does not provide a simple timing oracle, but rather sleeps for 0 to 100 milliseconds on successful unpadding of a message. Once again, the CTF participants should modify their querying code accordingly.
+7. The sixth stage is to the fifth as the fourth is to the third.
+8. The server for the seventh stage provides a simplified PKCS 1 OAEP padding oracle as in stage 1. In this stage, the Manger attack should be implemented.
+9. Once again, stage 8 is a parallelized version of stage 7.
 
 ## Preparing the CTF
 
@@ -78,6 +79,8 @@ CTFd_export/
 ```
 
 The `zip` files are the files the groups download from the CTF platform. These files contain the server's public key (currently the same for all stages, but this can be changed in the future if needed) and any files in the directory `material/stage_XX` (such as documentation or redacted attack scripts). These files are replaced in the base configuration of the CTF platform and are put in `ctf_import.zip`, as explained in the relevant section below.
+
+For `stage_00` (the introduction stage), two more files are generated: `group/enc.bin`, containing the encrypted flag, and `flag`, containing the flag itself. The flag file is used by the preparation scripts to update the flag expected by the CTF platform for this stage.
 
 The `nginx` container forwards connections from the main machine to the server containers themselves; its configuration (`nginx/conf/nginx.conf`) holds all the ports and addresses of the servers, internal and external, which are generated by `build.sh`. In some stages, more than one server instance is run for each group, and more than one thread is generated in each server instance. These numbers are specified in `stages.json` and can be modified there (more on this soon). This detail is not visible (directly, at least) to the teams, as all servers are "internal" and the `nginx` container forwards connections from the teams to the servers themselves.
 

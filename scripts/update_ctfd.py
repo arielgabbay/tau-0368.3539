@@ -25,7 +25,10 @@ def read_challenges():
             raise ValueError("Invalid challenge category: " + challenge['category'])
         base = 0 if challenge['category'] == "Bleichenbacher" else num_bleichenbacher_challenges
         try:
-            challenge_num = int(re.findall("^Challenge ([0-9]+)$", challenge['name'])[0])
+            if challenge['name'] == "Introduction":
+                challenge_num = 0
+            else:
+                challenge_num = int(re.findall("^Challenge ([0-9]+)$", challenge['name'])[0])
         except IndexError:
             raise ValueError("Found a challenge name not matching 'Challenge <num>': " + challenge['name'])
         challenge_dict[challenge['id']] = challenge_num
@@ -52,9 +55,22 @@ def update_files(challenges):
         shutil.copyfile(os.path.join("ctf", stage_name, stage_name + ".zip"),
                         os.path.join("CTFd_export", "uploads", dirname, stage_name + ".zip"))
 
+def update_intro_flag(challenges):
+    with open("CTFd_export/db/flags.json", "r") as f:
+        flags = json.load(f)
+    for flag in flags['results']:
+        challenge_num = challenges[flag['challenge_id']]
+        assert challenge_num == 0, "Non-cookie flag found for challenge %d" % challenge_num
+        with open(os.path.join("ctf", "stage_%02d" % challenge_num, "flag"), "r") as f:
+            flag_val = f.read()
+        flag['content'] = flag_val
+    with open("CTFd_export/db/flags.json", "w") as f:
+        json.dump(flags, f)
+
 def main():
     challenges = read_challenges()
     update_files(challenges)
+    update_intro_flag(challenges)
 
 if __name__ == "__main__":
     main()

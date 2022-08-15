@@ -89,6 +89,8 @@ def main():
             val = random.randrange(0, key.n)
             with open(os.path.join(grpdir, "enc.bin"), "wb") as f:
                 f.write(pow(val, key.e, key.n).to_bytes(key.size_in_bytes(), byteorder="big"))
+            with open(os.path.join(stagedir, "flag"), "w") as f:
+                f.write(str(val))
 
     # Generate port numbers for stages
     internal_ports = set()
