@@ -1,6 +1,8 @@
 """
 Chosen-ciphertext attack on PKCS #1 v1.5
 http://archiv.infsec.ethz.ch/education/fs08/secsem/bleichenbacher98.pdf
+
+Missing parts that need to be completed are marked by ## ??? ##.
 """
 from oracles import MbedTLS_Oracle
 from attack_args import parse_args, read_pubkey
@@ -93,6 +95,7 @@ def blinding(k, key, c, oracle):
     while True:
         s_0 = os.urandom(k)
         s_0 = int.from_bytes(s_0, byteorder='big') % key.n
+        ## ??? ##
 
 
 def find_min_conforming(key, c_0, min_s, oracle, k):
@@ -104,7 +107,8 @@ def find_min_conforming(key, c_0, min_s, oracle, k):
     :param oracle: oracle that checks ciphertext conformity
     :return: smallest s >= min_s s.t. (c_0 * (s ** e)) mod n represents a conforming ciphertext
     """
-
+    pass  ## ??? ##
+    
 
 def search_single_interval(key, B, prev_s, a, b, c_0, oracle, k):
     """
@@ -118,6 +122,7 @@ def search_single_interval(key, B, prev_s, a, b, c_0, oracle, k):
     :param oracle: oracle that checks ciphertext conformity
     :return: s s.t. (c_0 * (s ** e)) mod n represents a conforming ciphertext
     """
+    pass  ## ??? ##
 
 
 def narrow_m(key, m_prev, s, B):
@@ -131,11 +136,11 @@ def narrow_m(key, m_prev, s, B):
     """
     intervals = []
     for a, b in m_prev:
-        min_r = 
-        max_r = 
+        min_r = None  ## ??? ##
+        max_r = None  ## ??? ##
         for r in range(min_r, max_r + 1):
-            start = 
-            end = 
+            start = None  ## ??? ##
+            end = None  ## ??? ##
             intervals.append((start, end))
 
     return merge_intervals(intervals)
@@ -174,7 +179,7 @@ def bleichenbacher_attack(k, key, c, oracle):
         m = narrow_m(key, m, s, B)
 
         if len(m) == 1 and m[0][0] == m[0][1]:
-            result = 
+            result = None  ## ??? ##
             break
         i += 1
 

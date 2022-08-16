@@ -1,6 +1,6 @@
 """
-Python implementation of PKCS-1.5 RSA encryption
-https://tools.ietf.org/html/rfc2313
+Python implementation of PKCS-OAEP RSA encryption
+https://tools.ietf.org/html/rfc8017
 
 Missing parts that need to be completed are marked by ## ??? ##.
 """
