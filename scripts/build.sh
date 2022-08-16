@@ -37,3 +37,6 @@ docker build -f servers/Dockerfile_base -t ctf_server_base . --build-arg MBEDTLS
 # Build server images
 chmod +x scripts/build_servers.sh
 ./scripts/build_servers.sh
+# Build CTFd image
+cd CTFd/
+docker-compose build

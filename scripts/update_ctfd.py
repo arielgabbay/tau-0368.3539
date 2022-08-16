@@ -21,9 +21,12 @@ def read_challenges():
         challenges = json.load(f)
     challenge_dict = {}
     for challenge in challenges['results']:
-        if challenge['category'] not in ("Bleichenbacher", "Manger"):
+        if challenge['category'] not in ("Bleichenbacher", "Manger", "Introduction"):
             raise ValueError("Invalid challenge category: " + challenge['category'])
-        base = 0 if challenge['category'] == "Bleichenbacher" else num_bleichenbacher_challenges
+        if challenge['category'] == "Introduction":
+            base = 0
+        else:
+            base = 0 if challenge['category'] == "Bleichenbacher" else num_bleichenbacher_challenges
         try:
             if challenge['name'] == "Introduction":
                 challenge_num = 0
@@ -31,7 +34,7 @@ def read_challenges():
                 challenge_num = int(re.findall("^Challenge ([0-9]+)$", challenge['name'])[0])
         except IndexError:
             raise ValueError("Found a challenge name not matching 'Challenge <num>': " + challenge['name'])
-        challenge_dict[challenge['id']] = challenge_num
+        challenge_dict[challenge['id']] = base + challenge_num
         with open(os.path.join("ctf", "stage_%02d" % challenge_num, "port"), "r") as f:
             port = f.read()
         challenge['connection_info'] = "Port: " + port
