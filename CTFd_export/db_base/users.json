@@ -1,0 +1,1 @@
+{"count":1,"results":[{"id":1,"oauth_id":null,"name":"admin","password":"$bcrypt-sha256$v=2,t=2b,r=12$e1Bo0zrvh2nwICrOqc3w5O$fWPIjIfZhLRPdmJ5AGmYhSjZPRaLChG","email":"a@a.a","type":"admin","secret":null,"website":null,"affiliation":null,"country":null,"bracket":null,"hidden":1,"banned":0,"verified":0,"team_id":null,"created":"2022-08-14T16:21:28"}],"meta":{}}

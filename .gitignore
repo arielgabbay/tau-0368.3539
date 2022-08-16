@@ -6,3 +6,16 @@ request.csr
 cert.crt
 *.so
 temp/
+*.bin
+scripts/build_servers.sh
+scripts/run_nginx.sh
+scripts/run_servers.sh
+nginx/conf/
+ctf/
+CTFd_export/*.zip
+CTFd_export/uploads/
+CTFd_export/db/
+CTFd_export/db_base/pool_flags.json
+flag_pool/*/
+flag_pool/queries.json
+*_env/

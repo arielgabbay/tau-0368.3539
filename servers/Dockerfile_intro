@@ -1,0 +1,11 @@
+FROM ubuntu:22.04
+ARG SERVER_SCRIPT=
+ARG PRIVKEY=
+ARG NUM_SERVERS=
+RUN apt-get -y update 
+RUN apt-get install -y python3 python3-pip
+RUN python3 -m pip install pycryptodome==3.15.0
+COPY ${SERVER_SCRIPT} /etc/server.py
+COPY ${PRIVKEY} /etc/priv.key.pem
+ENV NUM_SERVERS_ARG ${NUM_SERVERS}
+CMD python3 /etc/server.py -k /etc/priv.key.pem -n ${NUM_SERVERS_ARG}

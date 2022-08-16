@@ -1,0 +1,13 @@
+CTFd/
+attack_scripts/
+CTFd_export/
+ctf_env/
+material/
+nginx/
+old_docs/
+scripts/
+tests/
+tags
+requirements.txt
+README.md
+Makefile
