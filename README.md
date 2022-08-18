@@ -60,6 +60,8 @@ To prepare the files and scripts needed for the CTF, run (from the root director
 ./scripts/build.sh <num_of_groups>
 ```
 
+The number of groups given to the script affects only the number of containers that are run for each stage. There's no problem if fewer or more groups than expected show up; of course, if the CTF's attendance is significantly greater than expected, the servers may experience some strain.
+
 This script will generate the following directories and files:
 
 ```
