@@ -119,8 +119,8 @@ def main():
             for i, stage in enumerate(category_stages):
                 stage_num = i + 1
                 f.write("## STAGE %02d\n" % stage_num)
-                args_str = " --build-arg ".join(stage.docker_args)
-                f.write("docker build -f %s -t server_%s_%02d . %s\n" % (stage.dockerfile, category, stage_num, args_str))
+                args_str = "--build-arg " + " --build-arg ".join(stage.docker_args)
+                f.write("docker build -f %s -t server_%s_%02d . %s\n" % (stage.dockerfile, category.lower(), stage_num, args_str))
 
     with open(args.servers_run_command, "w") as f:
         f.write("set -e\n")
@@ -128,7 +128,7 @@ def main():
             for i, stage in enumerate(category_stages):
                 stage_num = i + 1
                 for j, serv_port in enumerate(stage.server_ports):
-                    f.write("docker run --name server_%s_stage%02d_%02d -p %d:4433 -d server_%s_%02d\n" % (category, stage_num, j + 1, serv_port, category, stage_num))
+                    f.write("docker run --name server_%s_stage%02d_%02d -p %d:4433 -d server_%s_%02d\n" % (category.lower(), stage_num, j + 1, serv_port, category.lower(), stage_num))
 
 if __name__ == "__main__":
     sys.exit(main())
