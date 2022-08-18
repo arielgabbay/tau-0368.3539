@@ -20,7 +20,7 @@ def parse(eb):
     if eb[1] == 0:
         if firstzero != 2:  # first byte after BT has to be zero; data starts after zeros
             return None
-        return eb[3:].lstrip("\x00")
+        return eb[3:].lstrip(b"\x00")
     elif eb[1] == 1:
         if not all(c == 0xFF for c in eb[:firstzero]):  # FFs until first zero, then data
             return None
