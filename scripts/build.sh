@@ -14,7 +14,7 @@ python scripts/prepare.py ctf -n $1 --nginx-conf nginx/conf/nginx.conf --nginx-c
 # Create zip files for groups
 for grpdir in ctf/*/*/group; do
 	cd "$grpdir"
-	zip -r ../$(echo "$grpdir" | cut -f2 -d/).zip .
+	zip -r ../files.zip .
 	cd -
 done
 # Update CTFd export files

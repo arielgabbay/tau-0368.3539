@@ -3,27 +3,14 @@ from Crypto.PublicKey import RSA
 import Crypto.Cipher.PKCS1_v1_5 as PKCS_1_5
 import Crypto.Cipher.PKCS1_OAEP as PKCS_OAEP
 from distutils.dir_util import copy_tree
-from collections import defaultdict
+from stage_conf import read_stages_conf
 import random
-import json
 import os
 import sys
 import argparse
 import shutil
 import subprocess
 import itertools
-
-class Stage:
-    def __init__(self, category, name, servers_per_group, pkcs_class, servers_ip, material_dirname, dockerfile, docker_args):
-        self.servers_per_group = servers_per_group
-        self.pkcs_class = pkcs_class
-        self.port = None
-        self.server_ports = []
-        self.servers_ip = servers_ip
-        self.name = name
-        self.material_dir = os.path.join("material", material_dirname)
-        self.dockerfile = os.path.join("servers", dockerfile)
-        self.docker_args = docker_args
 
 PKCS_CLASSES = {"PKCS_1_5": PKCS_1_5, "PKCS_OAEP": PKCS_OAEP, "None": None}
 
@@ -33,16 +20,6 @@ def call(cmd):
     sp = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     res = sp.wait()
     assert res == 0
-
-def read_stages_conf(conf_filename):
-    with open(conf_filename, "r") as f:
-        conf = json.load(f)
-    stages = defaultdict(list)
-    for category in conf:
-        assert category.isalnum(), "Invalid category name (only alphanumeric characters allowed): " + category
-        for name, spg, pkcs_str, servers_ip, material_dirname, dockerfile, docker_args in conf[category]:
-            stages[category].append(Stage(category, name, spg, pkcs_str, servers_ip, material_dirname, dockerfile, docker_args))
-    return stages
 
 def parse_args():
     parser = argparse.ArgumentParser()

@@ -161,7 +161,7 @@
             "max_attempts": 0,
             "value": 500,
             "category": "Introduction",
-            "type": "standard",
+            "type": "cookie",
             "state": "visible",
             "requirements": null,
             "connection_info": "Port: 3444",
