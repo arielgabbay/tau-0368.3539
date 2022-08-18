@@ -16,6 +16,4 @@ CTFd_export/*.zip
 CTFd_export/uploads/
 CTFd_export/db/
 CTFd_export/db_base/pool_flags.json
-flag_pool/*/
-flag_pool/queries.json
 *_env/

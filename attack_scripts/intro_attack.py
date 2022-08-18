@@ -42,7 +42,7 @@ def main():
     for offset in range(1, 500):
         for candidate in (interval_min + offset, interval_min - offset):
             if pow(candidate, key.e, key.n) == orig_ciphertext:
-                print(candidate)
+                print(hex(candidate)[2:])
                 return candidate
     print("Not found!")
     return None
