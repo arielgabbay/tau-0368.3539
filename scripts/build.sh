@@ -12,7 +12,7 @@ fi
 mkdir -p nginx/conf
 python scripts/prepare.py ctf -n $1 --nginx-conf nginx/conf/nginx.conf --nginx-command scripts/run_nginx.sh --servers-build-command scripts/build_servers.sh --servers-run-command scripts/run_servers.sh --stages-conf stages.json
 # Create zip files for groups
-for grpdir in ctf/*/group; do
+for grpdir in ctf/*/*/group; do
 	cd "$grpdir"
 	zip -r ../$(echo "$grpdir" | cut -f2 -d/).zip .
 	cd -
