@@ -5,7 +5,6 @@ https://www.iacr.org/archive/crypto2001/21390229.pdf
 Missing parts that need to be completed are marked by ## ??? ##.
 """
 from oracles import MbedTLS_Oracle
-from PKCS_OAEP import parse
 
 
 def divceil(a, b):
@@ -126,5 +125,5 @@ if __name__ == "__main__":
         raise Exception("Attack requires a valid ciphertext (pass --given-enc)")
 
     result = manger_attack(k, pub_key, c, oracle, True)
-    print(parse(result))
+    print(result.hex())
 

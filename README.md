@@ -21,8 +21,10 @@ The stages are as follows:
 7. The sixth Bleichenbacher stage is like the fifth stage but with the same challenge as in stage 2: the flag is changed every few minutes, so attacks should be made multi-threaded.
 8. The server for the seventh Bleichenbacher stage does not provide a simple timing oracle, but rather sleeps for 0 to 100 milliseconds on successful unpadding of a message. Once again, the CTF participants should modify their querying code accordingly.
 9. The eighth Bleichenbacher stage is to the seventh as the sixth is to the fifth.
-10. The server for the first Manger stage provides a simplified PKCS 1 OAEP padding oracle as in stage 1. In this stage, the Manger attack should be implemented. Once again, a summary of the attack implementation is provided and can be found on Overleaf (in the [same link](https://www.overleaf.com/read/nqhbvcmydsyz)).
-11. Once again, stage 8 is a parallelized version of stage 7.
+10. The server for the first Manger stage provides a simplified PKCS 1 OAEP padding oracle as in stage 1. In this stage, the Manger attack should be implemented. Once again, a summary of the attack implementation is provided and can be found on Overleaf (in the [same link](https://www.overleaf.com/read/nqhbvcmydsyz)). The flag is encrypted without padding (as in the first third and fourth Bleichenbacher challenges), so there's no need to implement PKCS OAEP unpadding.
+11. Once again, stage 2 is a parallelized version of stage 1.
+12. This stage is the same as the first Manger stage, but now the flag is padded, so it requires unpadding.
+13. Once again, stage 4 is a parallelized version of stage 3.
 
 ## Preparing the CTF
 
@@ -257,4 +259,3 @@ Notice that the `CTFd/.data` directory holds the CTF database, so if you want to
 ## Newer possible stages
 
 * Manger challenges that require statistical analysis of several queries to determine padding status.
-* Add two Manger challenges before the current one in which the flag is not padded.
