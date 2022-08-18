@@ -25,7 +25,7 @@ def update_challenges(stages):
                 challenge_dict[challenge['id']] = (stage_num, stage)
                 break
         else:
-            raise AssertionError("Couldn't find a stage under category %s with name %s" % (category, challenge['name']))
+            raise AssertionError("Couldn't find a stage under category %s with name %s" % (challenge['category'], challenge['name']))
         with open(os.path.join("ctf", challenge['category'], "stage_%02d" % stage_num, "port"), "r") as f:
             port = f.read()
         challenge['connection_info'] = "Port: " + port
