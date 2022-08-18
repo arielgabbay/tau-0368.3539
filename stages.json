@@ -7,10 +7,12 @@
 	[
 		["Challenge 01", 1, "172.17.0.1", "stage01", "Dockerfile_stage", ["PRIVKEY=ctf/server/priv.key.pem", "CERT=ctf/server/cert.crt", "STAGE=1", "NUM_SERVERS=10"]],
 		["Challenge 02", 1, "172.17.0.1", "stage02", "Dockerfile_stage", ["PRIVKEY=ctf/server/priv.key.pem", "CERT=ctf/server/cert.crt", "STAGE=2", "NUM_SERVERS=15"]],
-		["Challenge 03", 1, "172.17.0.1", "stage03", "Dockerfile_stage", ["PRIVKEY=ctf/server/priv.key.pem", "CERT=ctf/server/cert.crt", "STAGE=3", "NUM_SERVERS=10"]],
-		["Challenge 04", 1, "172.17.0.1", "stage04", "Dockerfile_stage", ["PRIVKEY=ctf/server/priv.key.pem", "CERT=ctf/server/cert.crt", "STAGE=4", "NUM_SERVERS=15"]],
-		["Challenge 05", 1, "172.17.0.1", "stage05", "Dockerfile_stage", ["PRIVKEY=ctf/server/priv.key.pem", "CERT=ctf/server/cert.crt", "STAGE=5", "NUM_SERVERS=10"]],
-		["Challenge 06", 1, "172.17.0.1", "stage06", "Dockerfile_stage", ["PRIVKEY=ctf/server/priv.key.pem", "CERT=ctf/server/cert.crt", "STAGE=6", "NUM_SERVERS=15"]]
+		["Challenge 01", 1, "172.17.0.1", "stage03", "Dockerfile_stage", ["PRIVKEY=ctf/server/priv.key.pem", "CERT=ctf/server/cert.crt", "STAGE=1", "NUM_SERVERS=10"]],
+		["Challenge 02", 1, "172.17.0.1", "stage04", "Dockerfile_stage", ["PRIVKEY=ctf/server/priv.key.pem", "CERT=ctf/server/cert.crt", "STAGE=2", "NUM_SERVERS=15"]],
+		["Challenge 05", 1, "172.17.0.1", "stage05", "Dockerfile_stage", ["PRIVKEY=ctf/server/priv.key.pem", "CERT=ctf/server/cert.crt", "STAGE=3", "NUM_SERVERS=10"]],
+		["Challenge 06", 1, "172.17.0.1", "stage06", "Dockerfile_stage", ["PRIVKEY=ctf/server/priv.key.pem", "CERT=ctf/server/cert.crt", "STAGE=4", "NUM_SERVERS=15"]],
+		["Challenge 07", 1, "172.17.0.1", "stage07", "Dockerfile_stage", ["PRIVKEY=ctf/server/priv.key.pem", "CERT=ctf/server/cert.crt", "STAGE=5", "NUM_SERVERS=10"]],
+		["Challenge 08", 1, "172.17.0.1", "stage08", "Dockerfile_stage", ["PRIVKEY=ctf/server/priv.key.pem", "CERT=ctf/server/cert.crt", "STAGE=6", "NUM_SERVERS=15"]]
 	],
 	"Manger":
 	[

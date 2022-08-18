@@ -89,8 +89,12 @@ def blinding(k, key, c, oracle):
     :param oracle: oracle that checks ciphertext conformity
     :return: integers s_0, c_0 s.t. c_0 represents a conforming encryption and c_0 = (c * (s_0) ** e) mod n
     """
-    assert oracle.query(c.to_bytes(k, byteorder='big')), "Given encryption is not PKCS-conforming!"
-    return 1, c
+    if oracle.query(c.to_bytes(k, byteorder='big')):
+        return 1, c
+    while True:
+        s_0 = os.urandom(k)
+        s_0 = int.from_bytes(s_0, byteorder='big') % key.n
+        ## ??? ##
 
 
 def find_min_conforming(key, c_0, min_s, oracle, k):
