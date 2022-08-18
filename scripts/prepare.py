@@ -3,24 +3,14 @@ from Crypto.PublicKey import RSA
 import Crypto.Cipher.PKCS1_v1_5 as PKCS_1_5
 import Crypto.Cipher.PKCS1_OAEP as PKCS_OAEP
 from distutils.dir_util import copy_tree
+from stage_conf import read_stages_conf
 import random
-import json
 import os
 import sys
 import argparse
 import shutil
 import subprocess
 import itertools
-
-class Stage:
-    def __init__(self, servers_per_group, threads_per_server, pkcs_class, servers_ip):
-        self.servers_per_group = servers_per_group
-        self.threads_per_server = threads_per_server
-        self.pkcs_class = pkcs_class
-        self.idx = 0 if pkcs_class == PKCS_1_5 else 1
-        self.port = None
-        self.server_ports = []
-        self.servers_ip = servers_ip
 
 PKCS_CLASSES = {"PKCS_1_5": PKCS_1_5, "PKCS_OAEP": PKCS_OAEP, "None": None}
 
@@ -30,15 +20,6 @@ def call(cmd):
     sp = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     res = sp.wait()
     assert res == 0
-
-def read_stages_conf(conf_filename):
-    with open(conf_filename, "r") as f:
-        conf = json.load(f)
-    stages = []
-    for spg, tps, pkcs_str, servers_ip in conf:
-        pkcs_class = PKCS_CLASSES[pkcs_str]
-        stages.append(Stage(spg, tps, pkcs_class, servers_ip))
-    return stages
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -75,43 +56,42 @@ def main():
         f.write(key.n.to_bytes(key.size_in_bytes(), byteorder="big"))
         f.write(key.e.to_bytes(key.size_in_bytes(), byteorder="big"))
 
-    for i, stage in enumerate(stages):
-        stagedir = os.path.join(args.ctf_dir, "stage_%02d" % i)
-        os.mkdir(stagedir)
-        grpdir = os.path.join(stagedir, "group")
-        os.mkdir(grpdir)
-        shutil.copyfile(os.path.join(servdir, "pubkey.bin"), os.path.join(grpdir, "pubkey.bin"))
-        material_dir = os.path.join("material/stage%02d" % i)
-        if os.path.isdir(material_dir):
-            copy_tree(material_dir, grpdir)
-        # Generate a ciphertext for introduction stage
-        if i == 0:
-            val = random.randrange(0, key.n)
-            with open(os.path.join(grpdir, "enc.bin"), "wb") as f:
-                f.write(pow(val, key.e, key.n).to_bytes(key.size_in_bytes(), byteorder="big"))
-            with open(os.path.join(stagedir, "flag"), "w") as f:
-                f.write(str(val))
+    for category, category_stages in stages.items():
+        catdir = os.path.join(args.ctf_dir, category)
+        os.mkdir(catdir)
+        for i, stage in enumerate(category_stages):
+            stage_num = i + 1
+            stagedir = os.path.join(catdir, "stage_%02d" % stage_num)
+            os.mkdir(stagedir)
+            grpdir = os.path.join(stagedir, "group")
+            os.mkdir(grpdir)
+            shutil.copyfile(os.path.join(servdir, "pubkey.bin"), os.path.join(grpdir, "pubkey.bin"))
+            if os.path.isdir(stage.material_dir):
+                copy_tree(stage.material_dir, grpdir)
 
     # Generate port numbers for stages
     internal_ports = set()
     external_ports = set()
-    for i, stage in enumerate(stages):
-        stagedir = os.path.join(args.ctf_dir, "stage_%02d" % i)
-        while True:
-            external = random.randrange(3000, 10000)
-            if external not in external_ports:
-                break
-        external_ports.add(external)
-        with open(os.path.join(stagedir, "port"), "w") as f:
-            f.write(str(external))
-        stage.port = external
-        for _ in range(stage.servers_per_group * args.num_groups):
+    for category, category_stages in stages.items():
+        catdir = os.path.join(args.ctf_dir, category)
+        for i, stage in enumerate(category_stages):
+            stage_num = i + 1
+            stagedir = os.path.join(catdir, "stage_%02d" % stage_num)
             while True:
-                internal = random.randrange(3000, 10000)
-                if internal not in internal_ports:
+                external = random.randrange(3000, 10000)
+                if external not in external_ports:
                     break
-            internal_ports.add(internal)
-            stage.server_ports.append(internal)
+            external_ports.add(external)
+            with open(os.path.join(stagedir, "port"), "w") as f:
+                f.write(str(external))
+            stage.port = external
+            for _ in range(stage.servers_per_group * args.num_groups):
+                while True:
+                    internal = random.randrange(3000, 10000)
+                    if internal not in internal_ports:
+                        break
+                internal_ports.add(internal)
+                stage.server_ports.append(internal)
 
     # Generate server-running stuff
     with open(args.nginx_command, "w") as f:
@@ -121,29 +101,34 @@ def main():
 
     with open(args.nginx_conf, "w") as f:
         f.write("events {}\nstream {\n")
-        for i, stage in enumerate(stages):
-            f.write("\tupstream stage%02d {\n\t\tleast_conn;\n" % i)
-            for serv_port in stage.server_ports:
-                f.write("\t\tserver %s:%d;\n" % (stage.servers_ip, serv_port))
-            f.write("\t}\n")
-            f.write("\tserver {\n\t\tlisten %d;\n\t\tproxy_pass stage%02d;\n\t}\n" % (stage.port, i))
+        for category, category_stages in stages.items():
+            for i, stage in enumerate(category_stages):
+                stage_num = i + 1
+                upstream_name = "%s_stage%02d" % (category, stage_num)
+                f.write("\tupstream %s {\n\t\tleast_conn;\n" % upstream_name)
+                for serv_port in stage.server_ports:
+                    f.write("\t\tserver %s:%d;\n" % (stage.servers_ip, serv_port))
+                f.write("\t}\n")
+                f.write("\tserver {\n\t\tlisten %d;\n\t\tproxy_pass %s;\n\t}\n" % (stage.port, upstream_name))
         f.write("}")
 
     with open(args.servers_build_command, "w") as f:
         f.write("set -e\n")
-        key_file = os.path.join(servdir, "priv.key.pem")
-        crt_file = os.path.join(servdir, "cert.crt")
-        f.write("docker build -f servers/Dockerfile_intro -t stage00 . --build-arg SERVER_SCRIPT=servers/intro_server.py --build-arg PRIVKEY=%s --build-arg NUM_SERVERS=%d\n" % (key_file, stage.threads_per_server))
-        for i, stage in enumerate(itertools.islice(stages, 1, len(stages))):
-            f.write("# STAGE %02d\n" % (i + 1))
-            stagedir = os.path.join(args.ctf_dir, "stage_%02d" % (i + 1))
-            f.write("docker build -f servers/Dockerfile_stage -t stage%02d . --build-arg PRIVKEY=%s --build-arg CERT=%s --build-arg STAGE=%d --build-arg NUM_SERVERS=%d\n" % (i + 1, key_file, crt_file, i + 1, stage.threads_per_server))
+        for category, category_stages in stages.items():
+            f.write("# CATEGORY %s\n" % category)
+            for i, stage in enumerate(category_stages):
+                stage_num = i + 1
+                f.write("## STAGE %02d\n" % stage_num)
+                args_str = "--build-arg " + " --build-arg ".join(stage.docker_args)
+                f.write("docker build -f %s -t server_%s_%02d . %s\n" % (stage.dockerfile, category.lower(), stage_num, args_str))
 
     with open(args.servers_run_command, "w") as f:
         f.write("set -e\n")
-        for i, stage in enumerate(stages):
-            for j, serv_port in enumerate(stage.server_ports):
-                f.write("docker run --name stage%02d_%02d -p %d:4433 -d stage%02d\n" % (i, j + 1, serv_port, i))
+        for category, category_stages in stages.items():
+            for i, stage in enumerate(category_stages):
+                stage_num = i + 1
+                for j, serv_port in enumerate(stage.server_ports):
+                    f.write("docker run --name server_%s_stage%02d_%02d -p %d:4433 -d server_%s_%02d\n" % (category.lower(), stage_num, j + 1, serv_port, category.lower(), stage_num))
 
 if __name__ == "__main__":
     sys.exit(main())
