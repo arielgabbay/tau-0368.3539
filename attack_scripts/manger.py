@@ -144,4 +144,4 @@ if __name__ == "__main__":
         raise Exception("Attack requires a valid ciphertext (pass --given-enc)")
 
     result = manger_attack(k, pub_key, c, oracle, True)
-    print(result)
+    print(result.hex())
