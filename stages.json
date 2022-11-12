@@ -17,6 +17,8 @@
 	"Manger":
 	[
 		["Challenge 01", 1, "172.17.0.1", "stage07", "Dockerfile_stage", ["PRIVKEY=ctf/server/priv.key.pem", "CERT=ctf/server/cert.crt", "STAGE=7", "NUM_SERVERS=10"]],
-		["Challenge 02", 1, "172.17.0.1", "stage08", "Dockerfile_stage", ["PRIVKEY=ctf/server/priv.key.pem", "CERT=ctf/server/cert.crt", "STAGE=8", "NUM_SERVERS=10"]]
+		["Challenge 02", 1, "172.17.0.1", "stage08", "Dockerfile_stage", ["PRIVKEY=ctf/server/priv.key.pem", "CERT=ctf/server/cert.crt", "STAGE=8", "NUM_SERVERS=10"]],
+		["Challenge 03", 1, "172.17.0.1", "stage09", "Dockerfile_stage", ["PRIVKEY=ctf/server/priv.key.pem", "CERT=ctf/server/cert.crt", "STAGE=7", "NUM_SERVERS=10"]],
+		["Challenge 04", 1, "172.17.0.1", "stage10", "Dockerfile_stage", ["PRIVKEY=ctf/server/priv.key.pem", "CERT=ctf/server/cert.crt", "STAGE=8", "NUM_SERVERS=10"]]
 	]
 }
