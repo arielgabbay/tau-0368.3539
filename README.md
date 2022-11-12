@@ -26,11 +26,13 @@ The stages are as follows:
 12. This stage is the same as the first Manger stage, but now the flag is padded, so it requires unpadding.
 13. Once again, stage 4 is a parallelized version of stage 3.
 
+In stages 1, 2, and 10 above (the first stage in which each of the attacks is implemented), a testing script is also provided with the material. The scripts test individual functions in the implementation.
+
 ## Preparing the CTF
 
 ### Prerequisites
 
-You'll need Python (we use version 3.8 and recommend you do as well), `docker`, and if you want to run the project's tests, the `pytest` package (more on this in the relevant section below). CTF participants will need Python installed, as well. To use the project `virtualenv`, the participants and you will need the `virtualenv` package (more on this soon).
+You'll need Python (we use version 3.8 and recommend you do as well), `docker`, `docker-compose`, and if you want to run the project's tests, the `pytest` package (more on this in the relevant section below). CTF participants will need Python installed, as well. To use the project `virtualenv`, the participants and you will need the `virtualenv` package (more on this soon).
 
 ### Creating and using the project `virtualenv`
 
